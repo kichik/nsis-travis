@@ -2,9 +2,11 @@ language: cpp
 compiler:
 - gcc
 os:
+- windows
 - linux
 - osx
 before_install:
+- if [[ $TRAVIS_OS_NAME == 'windows' ]]; then sudo pip install scons; fi
 - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then sudo apt-get install scons mingw32 mingw32-binutils zlib1g-dev libcppunit-dev; fi
 - if [[ $TRAVIS_OS_NAME == 'osx' ]]; then brew update; fi
 - if [[ $TRAVIS_OS_NAME == 'osx' ]]; then brew install https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw; fi
