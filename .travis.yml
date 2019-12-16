@@ -33,9 +33,11 @@ install:
 script:
 - scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test dist-zip
 env:
-- CFG_LOG=yes
-- CFG_LOG=no
-- PATH=/c/Python38:/c/Python38/Scripts:$PATH
+  global:
+  - PATH=/c/Python38:/c/Python38/Scripts:$PATH
+  jobs:
+  - CFG_LOG=yes
+  - CFG_LOG=no
 deploy:
   provider: script
   skip_cleanup: true
