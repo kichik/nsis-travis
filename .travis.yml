@@ -17,6 +17,7 @@ addons:
     - libcppunit
     - libcppunit-dev
     update: true
+    dist: trusty
   homebrew:
     packages:
     - https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw
