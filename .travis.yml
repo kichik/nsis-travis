@@ -31,7 +31,7 @@ deploy:
     - rm -f deploy_key
   on:
     branch: master
-    repo: kichik/nsis
+    repo: kichik/nsis-travis
     condition: "$CFG_LOG = no && $TRAVIS_OS_NAME = linux"
 addons:
   ssh_known_hosts: shell.sourceforge.net
