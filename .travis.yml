@@ -18,7 +18,7 @@ install:
 - unzip /tmp/zlib.zip -d /tmp/zlib
 script:
 #- scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test dist-zip
-- zip nsis.zip *
+- zip nsis-hello.zip *
 env:
 - CFG_LOG=yes
 - CFG_LOG=no
