@@ -19,7 +19,7 @@ addons:
     dist: trusty
   homebrew:
     packages:
-    - https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw
+    - "https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw"
     - scons
     - mingw-w64
     - zlib
