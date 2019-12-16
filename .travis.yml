@@ -5,6 +5,7 @@ os:
 - windows
 - linux
 - osx
+dist: trusty
 before_install:
 - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then sudo pip install scons; fi
 - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then sudo apt-get install scons mingw32 mingw32-binutils zlib1g-dev libcppunit-dev; fi
