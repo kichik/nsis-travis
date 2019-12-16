@@ -7,14 +7,13 @@ os:
 - osx
 dist: trusty
 addons:
+  ssh_known_hosts: shell.sourceforge.net
   apt:
     packages:
-    - asjkldjklasdjklasjkldaskljdjklasd
     - scons
     - mingw32
     - mingw32-binutils
     - zlib1g-dev
-    - libcppunit
     - libcppunit-dev
     update: true
     dist: trusty
@@ -45,8 +44,6 @@ deploy:
     repo: kichik/nsis
     condition: "$CFG_LOG = no && $TRAVIS_OS_NAME = linux"
 after_deploy: rm -f deploy_key
-addons:
-  ssh_known_hosts: shell.sourceforge.net
 notifications:
   slack:
     secure: Q61wSM9pOKiRp3WDNinMkZd+HWp6BFe+TlZDKoJgZJstMIT48TtkAaVmqW2h4HXtNxP9HvD1vzXqWGqGMG8vIO6hlQO5Rm/ruVa/rfb1kxLfD/dv+g/63ZloF3QmKKK++xeYKVNmPRVi7aSFjpx1wa+eG4rYPf0frc5XSFDuhVQ=
