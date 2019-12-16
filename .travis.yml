@@ -9,11 +9,12 @@ dist: trusty
 addons:
   apt:
     packages:
-      - scons
-      - mingw32
-      - mingw32-binutils
-      - zlib1g-dev
-      - libcppunit-dev
+    - scons
+    - mingw32
+    - mingw32-binutils
+    - zlib1g-dev
+    - libcppunit
+    - libcppunit-dev
     update: true
   homebrew:
     packages:
