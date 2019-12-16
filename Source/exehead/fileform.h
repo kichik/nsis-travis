@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,7 +112,7 @@ enum
 #ifdef NSIS_CONFIG_ENHANCEDUI_SUPPORT
   EW_GETDLGITEM,        // GetDlgItem:        3: [outputvar, dialog, item_id]
   EW_SETCTLCOLORS,      // SerCtlColors:      3: [hwnd, pointer to struct colors]
-  EW_SETBRANDINGIMAGE,  // SetBrandingImage:  1: [Bitmap file]
+  EW_LOADANDSETIMAGE,   // SetBrandingImage/LoadAndSetImage: 3: [imgid ctl flags]
   EW_CREATEFONT,        // CreateFont:        5: [handle output, face name, height, weight, flags]
   EW_SHOWWINDOW,        // ShowWindow:        2: [hwnd, show state]
 #endif
@@ -467,6 +467,19 @@ typedef struct
   int parms[5];
 } page;
 
+
+// EW_LOADANDSETIMAGE flags, masks and shifts
+#define LASIS_FITCTLW 31 // Top bit because it MUST shift to a value of 0 or 1
+#define LASIF_FITCTLW ( (unsigned int)1 << LASIS_FITCTLW )
+#define LASIF_FITCTLH ( (unsigned int)1 << 30 )
+#define LASIM_IMAGE  0x00000003 // IMAGE_*
+#define LASIF_EXERES 0x00000004 // GetModuleHandle(NULL).
+#define LASIF_HWND   0x00000100 // Don't call GetDlgItem.
+#define LASIF_STRID  0x00010000
+#define LASIM_LR   ( 0x0000fff0 & ~(LASIM_IMAGE|LASIF_EXERES|LASIF_HWND|LASIF_STRID) )
+#define LASIF_LR_LOADFROMFILE 0x00000010
+
+
 // ctlcolors text/bg color flags
 #define CC_TEXT 1
 #define CC_TEXT_SYS 2
@@ -571,9 +584,20 @@ typedef struct {
 
 #pragma pack(pop)
 
-#ifdef EXEHEAD
+#define NSIS_MAX_EXEDATASIZE 0x7fffffffUL // Maximum size of .exe including compressed installer data.
+#ifndef NSIS_CONFIG_CRC_ANAL
+#define NSIS_MAX_EXEFILESIZE 0xffffffffUL // Maximum size of .exe including compressed installer data AND 3rd-party appended data. (Windows refuses to run .EXE files larger than 4 GiB)
+#else
+#define NSIS_MAX_EXEFILESIZE NSIS_MAX_EXEDATASIZE
+#endif
 
+#ifdef EXEHEAD
 // the following are only used/implemented in exehead, not makensis.
+
+#if NSIS_MAX_EXEDATASIZE <= 0xffffffffUL
+#define MAXEXEDATASIZETYPE UINT // Maximum size of .exe including compressed installer data. (Unsigned allows size including 3rd-party appeded data to be 4 GiB instead of 2 GiB)
+#endif
+#define MAXSIZETYPE UINT
 
 int NSISCALL isheader(firstheader *h); // returns 0 on not header, length_of_datablock on success
 
@@ -597,7 +621,7 @@ DWORD NSISCALL SetSelfFilePointer(LONG lDistanceToMove);
 extern struct block_header g_blocks[BLOCKS_NUM];
 extern header *g_header;
 extern int g_flags;
-extern int g_filehdrsize;
+extern UINT g_filehdrsize;
 extern int g_is_uninstaller;
 
 #define g_pages ( (page*) g_blocks[NB_PAGES].offset )

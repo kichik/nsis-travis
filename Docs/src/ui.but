@@ -10,7 +10,7 @@ Recent Windows versions restrict the setting of foreground windows. If the user 
 
 \c user_var(handle output) face_name [height] [weight] [/ITALIC] [/UNDERLINE] [/STRIKE]
 
-Creates a font and puts its handle into user_var. For more information about the different parameters have a look at \W{http://msdn.microsoft.com/library/default.asp?url=/library/en-us/gdi/fontext_8fp0.asp}{MSDN's page about the Win32 API function CreateFont()}.
+Creates a font and puts its handle into user_var. For more information about the different parameters have a look at \W{http://msdn.microsoft.com/en-us/library/dd183499}{MSDN's page about the Win32 API function CreateFont()}.
 
 You can get the current font used by NSIS using the ^Font and ^FontSize \R{langstring}{LangString}s.
 
@@ -71,6 +71,15 @@ If HWND is a window, Gotos jump_if_window, otherwise, Gotos jump_if_not_window (
 \c   Goto +2
 \c   MessageBox MB_OK "no window"
 
+\S2{loadandsetimage} LoadAndSetImage
+
+\c [/EXERESOURCE] [/STRINGID] [/RESIZETOFIT[WIDTH|HEIGHT]] ctrl imagetype lrflags image
+
+Loads and sets a image on a static control. \cw{ctrl} is the handle of the control. \cw{imagetype} must 0 for bitmaps and 1 for icons (and the control style must match the image type). \cw{lrflags} should be 0x10 to load from a file or 0 to load from a resource. \cw{image} specifies the file path or resource name. Use \cw{/EXERESOURCE} to load a resource from the installer .EXE. Use \cw{/STRINGID} if \cw{image} is a string, otherwise it is interpreted as a number. Use \cw{/RESIZETOFIT[WIDTH|HEIGHT]} to resize the image to the dimensions of the control.
+
+\c LoadAndSetImage /EXERESOURCE $hIconStatic 1 0 103
+\c LoadAndSetImage /STRINGID /RESIZETOFITWIDTH $hBmpStatic 0 0x10 "$PluginsDir\myimg.bmp"
+
 \S2{lockwindow} LockWindow
 
 \c on|off
@@ -106,7 +115,7 @@ Sets the current bitmap file displayed as the branding image. If no IMGID is spe
 
 \c show|hide
 
-Shows or hides the details, depending on which parameter you pass. Overrides the default details view, which is set via \R{ashowinstdetails}{ShowInstDetails}.
+Shows or hides the details on the InstFiles page, depending on which parameter you pass. Overrides the default details view, which is set via \R{ashowinstdetails}{ShowInstDetails}.
 
 \S2{setdetailsprint} SetDetailsPrint
 

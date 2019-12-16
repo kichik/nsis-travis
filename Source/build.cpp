@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,16 +96,11 @@ CEXEBuild::~CEXEBuild()
   int nlt = lang_tables.getlen() / sizeof(LanguageTable);
   LanguageTable *nla = (LanguageTable*)lang_tables.get();
 
-  for (int i = 0; i < nlt; i++) {
+  for (int i = 0; i < nlt; i++)
     DeleteLangTable(nla+i);
-  }
 
-  for (;postbuild_cmds;)
-  {
-    struct postbuild_cmd * tmp = postbuild_cmds;
-    postbuild_cmds = postbuild_cmds->next;
-    delete [] tmp;
-  }
+  if (postbuild_cmds)
+    postbuild_cmds->delete_all();
 }
 
 CEXEBuild::CEXEBuild(signed char pponly, bool warnaserror) :
@@ -131,9 +126,7 @@ CEXEBuild::CEXEBuild(signed char pponly, bool warnaserror) :
   ns_label.add(_T(""),0);
 
   definedlist.add(_T("NSIS_VERSION"), NSIS_VERSION);
-#ifdef NSIS_PACKEDVERSION
   definedlist.add(_T("NSIS_PACKEDVERSION"), NSIS_PACKEDVERSION);
-#endif
 
   m_target_type=TARGET_X86ANSI;
 #ifdef _WIN32
@@ -290,6 +283,7 @@ CEXEBuild::CEXEBuild(signed char pponly, bool warnaserror) :
   manifest_comctl = manifest::comctl_old;
   manifest_exec_level = manifest::exec_level_admin;
   manifest_dpiaware = manifest::dpiaware_notset;
+  manifest_lpaware = manifest::lpaware_notset;
   manifest_sosl.setdefault();
 
   enable_last_page_cancel=0;
@@ -349,7 +343,7 @@ CEXEBuild::CEXEBuild(signed char pponly, bool warnaserror) :
   m_UserVarNames.add(_T("EXEFILE"),-1);      // 28
   m_UserVarNames.add(_T("HWNDPARENT"),-1);   // 29
   m_UserVarNames.add(_T("_CLICK"),-1);       // 30
-  m_UserVarNames.add(_T("_OUTDIR"),1);       // 31
+  m_UserVarNames.add(_T("_OUTDIR"),1);       // 31 Note: nsDialogs also uses this
 
   m_iBaseVarsNum = m_UserVarNames.getnum();
 
@@ -423,6 +417,7 @@ void CEXEBuild::initialize(const TCHAR *makensis_path)
 
   tstring uninst = stubs_dir + PLATFORM_PATH_SEPARATOR_STR + _T("uninst");
   uninstaller_icon = load_icon_file(uninst.c_str());
+  changed_target = false;
 }
 
 
@@ -2389,14 +2384,21 @@ int CEXEBuild::SetManifest()
 {
   try {
     init_res_editor();
-    // This should stay ANSI
-    string manifest = manifest::generate((manifest::flags)manifest_flags, manifest_comctl, manifest_exec_level, manifest_dpiaware, manifest_dpiawareness.c_str(), manifest_sosl);
+    manifest::SPECIFICATION spec = { (manifest::flags) manifest_flags, manifest_dpiaware, manifest_dpiawareness.c_str(), manifest_lpaware, &manifest_sosl, manifest_maxversiontested.c_str() };
+    string manifest = manifest::generate(manifest_comctl, manifest_exec_level, spec);
 
     if (manifest == "")
       return PS_OK;
 
+    if (!build_unicode && manifest_lpaware >= manifest::lpaware_true)
+      throw std::runtime_error("Incompatible option");
+
+    // TODO: Ideally we should allow this but we must be sure that the manifest is custom and not a manifest from the stub
+    //if (res_editor->ResourceExists(MAKEINTRESOURCE(24), 1, CResourceEditor::ANYLANGID))
+    //  return PS_OK; // Allow user to completely override the manifest with PEAddResource
+
     // Saved directly as binary into the exe.
-    res_editor->UpdateResource(MAKEINTRESOURCE(24), 1, NSIS_DEFAULT_LANG, (LPBYTE) manifest.c_str(), (DWORD)manifest.length());
+    res_editor->UpdateResource(MAKEINTRESOURCE(24), 1, NSIS_DEFAULT_LANG, (LPBYTE) const_cast<char*>(manifest.c_str()), (DWORD) manifest.length());
   }
   catch (exception& err) {
     ERROR_MSG(_T("Error setting manifest: %") NPRIs _T("\n"), CtoTStrParam(err.what()));
@@ -2575,6 +2577,8 @@ int CEXEBuild::write_output(void)
   RET_UNLESS_OK( check_write_output_errors() );
 
   has_called_write_output=true;
+  if (!changed_target && !build_unicode)
+    warning(DW_GENERIC_DEPRECATED, _T("ANSI targets are deprecated"));
 
 #ifdef NSIS_CONFIG_PLUGIN_SUPPORT
   RET_UNLESS_OK( add_plugins_dir_initializer() );
@@ -2620,7 +2624,7 @@ int CEXEBuild::write_output(void)
     }
 
     // Set icon
-    set_icon(res_editor, IDI_ICON2, installer_icon, uninstaller_icon);
+    set_main_icon(res_editor, IDI_ICON2, installer_icon, uninstaller_icon);
 
     // Save all changes to the exe header
     close_res_editor();
@@ -3006,40 +3010,7 @@ int CEXEBuild::write_output(void)
       fileend,total_usize,pc/10,pc%10);
   }
   fclose(fp);
-  if (postbuild_cmds)
-  {
-    for (struct postbuild_cmd *cmd=postbuild_cmds; cmd; cmd = cmd->next)
-    {
-      TCHAR *cmdstr = cmd->cmd, *cmdstrbuf = NULL;
-      TCHAR *arg = _tcsstr(cmdstr, _T("%1"));
-      if (arg)    // if found, replace %1 by build_output_filename
-      {
-        const size_t cchbldoutfile = _tcslen(build_output_filename);
-        cmdstrbuf = (TCHAR*) malloc( (_tcslen(cmdstr) + cchbldoutfile + 1)*sizeof(TCHAR) );
-        if (!cmdstrbuf)
-        {
-          ERROR_MSG(_T("Error: can't allocate memory for finalize command\n"));
-          return PS_ERROR;
-        }
-        arg -= ((UINT_PTR)cmdstr)/sizeof(TCHAR), arg += ((UINT_PTR)cmdstrbuf)/sizeof(TCHAR);
-        _tcscpy(cmdstrbuf,cmdstr);
-        cmdstr = cmdstrbuf;
-        memmove(arg+cchbldoutfile, arg+2, (_tcslen(arg+2)+1)*sizeof(TCHAR));
-        memmove(arg, build_output_filename, cchbldoutfile*sizeof(TCHAR));
-        //BUGBUG: Should we call PathConvertWinToPosix on build_output_filename?
-      }
-
-      SCRIPT_MSG(_T("\nFinalize command: %") NPRIs _T("\n"),cmdstr);
-      int ret = sane_system(cmdstr);
-      if (!check_external_exitcode(ret, cmd->cmpop, cmd->cmpval))
-      {
-        ERROR_MSG(_T("%") NPRIs _T(" %d, aborting\n"), _T("Finalize command returned"), ret);
-        return PS_ERROR;
-      }
-      if (ret != 0) INFO_MSG(_T("%") NPRIs _T(" %d\n"), _T("Finalize command returned"), ret);
-      free(cmdstrbuf);
-    }
-  }
+  RET_UNLESS_OK(run_postbuild_cmds(postbuild_cmds, build_output_filename, _T("Finalize")));
   print_warnings();
   return PS_OK;
 }
@@ -3901,9 +3872,10 @@ int CEXEBuild::set_target_architecture_data()
     { TARGET_ARM64,      _T("NSIS_ARM64"), _T("1")   }
   };
   for (i = 0; i < COUNTOF(tdef); ++i) definedlist.del(tdef[i].def);
-  for (i = 0; i < COUNTOF(tdef); ++i) if (tdef[i].tt == m_target_type) definedlist.set(tdef[i].def, tdef[i].val);
+  unsigned int success = false;
+  for (i = 0; i < COUNTOF(tdef); ++i) if (tdef[i].tt == m_target_type) definedlist.set(tdef[i].def, tdef[i].val), ++success;
 
-  return PS_OK;
+  return success ? PS_OK : PS_ERROR;
 }
 
 const TCHAR* CEXEBuild::get_target_suffix(CEXEBuild::TARGETTYPE tt, const TCHAR*defval) const
@@ -3937,6 +3909,7 @@ int CEXEBuild::change_target_architecture(TARGETTYPE tt)
 #ifdef NSIS_CONFIG_PLUGIN_SUPPORT
   if (PS_OK == ec) ec = initialize_default_plugins(true);
 #endif
+  changed_target = true;
   return ec;
 }
 
@@ -4027,6 +4000,59 @@ void CEXEBuild::set_code_type_predefines(const TCHAR *value)
     default:
       definedlist.add(_T("__GLOBAL__"));
   }
+}
+
+void CEXEBuild::postbuild_cmd::delete_all()
+{
+  for (struct postbuild_cmd *p = this, *tmp; p;)
+  {
+    tmp = p, p = p->next;
+    delete [] tmp;
+  }
+}
+
+CEXEBuild::postbuild_cmd* CEXEBuild::postbuild_cmd::make(const TCHAR *cmdstr, int cmpop, int cmpval)
+{
+  postbuild_cmd *p = (postbuild_cmd*) (new BYTE[FIELD_OFFSET(postbuild_cmd, cmd[_tcsclen(cmdstr)+!0])]);
+  p->next = NULL, _tcscpy(p->cmd, cmdstr);
+  p->cmpop = cmpop, p->cmpval = cmpval;
+  return p;
+}
+
+int CEXEBuild::run_postbuild_cmds(const postbuild_cmd *cmds, const TCHAR *templatearg_pc1, const TCHAR* commandname)
+{
+  for (const postbuild_cmd *cmd = cmds; cmd; cmd = cmd->next)
+  {
+    const TCHAR *cmdstr = cmd->cmd, *searchstart = cmdstr;
+    TCHAR *arg, *cmdstrbuf = NULL, *tmpbuf;
+    for (; (arg = _tcsstr(const_cast<TCHAR*>(searchstart), _T("%1")));) // While found, replace %1 with templatearg_pc1
+    {
+      const size_t cchtpc1 = _tcslen(templatearg_pc1);
+      tmpbuf = (TCHAR*) malloc((_tcslen(cmdstr) + cchtpc1 + !0) * sizeof(TCHAR));
+      if (!tmpbuf)
+      {
+        ERROR_MSG(_T("Error: Can't allocate memory for %") NPRIs _T(" command\n"), commandname);
+        return PS_ERROR;
+      }
+      arg -= ((UINT_PTR)cmdstr)/sizeof(TCHAR), arg += ((UINT_PTR)tmpbuf)/sizeof(TCHAR);
+      _tcscpy(tmpbuf, cmdstr);
+      free(cmdstrbuf);
+      memmove(arg + cchtpc1, arg + 2, (_tcslen(arg + 2) + !0) * sizeof(TCHAR));
+      memmove(arg, templatearg_pc1, cchtpc1 * sizeof(TCHAR));
+      // BUGBUG: Should we call PathConvertWinToPosix on templatearg_pc1?
+      cmdstr = cmdstrbuf = tmpbuf, searchstart = arg + cchtpc1;
+    }
+    SCRIPT_MSG(_T("\n%") NPRIs _T(" command: %") NPRIs _T("\n"), commandname, cmdstr);
+    int ret = sane_system(cmdstr);
+    if (!check_external_exitcode(ret, cmd->cmpop, cmd->cmpval))
+    {
+      ERROR_MSG(_T("%") NPRIs _T(" command returned %d, aborting\n"), commandname, ret);
+      return PS_ERROR;
+    }
+    if (ret != 0) INFO_MSG(_T("%") NPRIs _T(" command returned %d\n"), commandname, ret);
+    free(cmdstrbuf);
+  }
+  return PS_OK;
 }
 
 int CEXEBuild::check_external_exitcode(int exitcode, int op, int val)

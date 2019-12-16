@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #include <set>
 #include "tstring.h"
 
-namespace STLHelpers 
+namespace STL 
 {
   template<class S, class C>
   struct string_nocasecmpless : std::binary_function<S, S, bool> 
@@ -44,7 +44,7 @@ namespace STLHelpers
 class Plugins
 {
   public:
-    typedef STLHelpers::string_nocasecmpless<tstring, tstring::value_type> strnocasecmp;
+    typedef STL::string_nocasecmpless<tstring, tstring::value_type> strnocasecmp;
 
     Plugins() : m_initialized(false) {}
 

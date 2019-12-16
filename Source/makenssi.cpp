@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@
 #include "winchar.h" // assert(sizeof(WINWCHAR)...)
 
 #include <nsis-version.h>
-#define NSIS_COPYYEARS _T("1999-2018")
+#define NSIS_COPYYEARS _T("1999-2019")
 
 using namespace std;
 
@@ -70,8 +70,10 @@ static void myatexit()
 {
   dopause();
   ResetPrintColor();
-  if (g_output != stdout && g_output) fclose(g_output), g_output = 0;
-  if (g_errout != stderr && g_errout) fclose(g_errout), g_errout = 0;
+  bool oneoutputstream = g_output == g_errout;
+  if (g_output != stdout && g_output                    ) fclose(g_output);
+  if (g_errout != stderr && g_errout && !oneoutputstream) fclose(g_errout);
+  g_output = g_errout = 0;
 #ifdef _WIN32
   SetConsoleOutputCP(g_wincon_orgoutcp);
 #endif

@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -449,43 +449,19 @@ int CEXEBuild::pp_insertmacro(LineParser&line)
 int CEXEBuild::pp_tempfile(LineParser&line)
 {
   TCHAR *symbol = line.gettoken_str(1);
-  const TCHAR *fpath;
-#ifdef _WIN32
-  TCHAR buf[MAX_PATH], buf2[MAX_PATH];
-  GetTempPath(MAX_PATH, buf);
-  if (!GetTempFileName(buf, _T("nst"), 0, buf2))
+  TCHAR *tfpath = create_tempfile_path();
+  if (!tfpath)
   {
-    ERROR_MSG(_T("!tempfile: unable to create temporary file.\n"));
+    ERROR_MSG(_T("!tempfile: Unable to create temporary file!\n"));
     return PS_ERROR;
   }
-  fpath = buf2;
-#else // !_WIN32
-  char t[] = ("/tmp/makensisXXXXXX");
-  const mode_t old_umask = umask(0077);
-  int fd = mkstemp(t);
-  umask(old_umask);
-  if (fd == -1)
-  { L_tok_p_tempfile_oom:
-    ERROR_MSG(_T("!tempfile: unable to create temporary file.\n"));
-    return PS_ERROR;
-  }
-  close(fd);
-#ifdef _UNICODE
-  if (!(fpath = NSISRT_mbtowc(t))) goto L_tok_p_tempfile_oom;
-#else
-  fpath = t;
-#endif
-#endif // ~_WIN32
-
-  if (definedlist.add(symbol, fpath))
+  int symexisted = definedlist.add(symbol, tfpath);
+  free(tfpath);
+  if (symexisted)
   {
     ERROR_MSG(_T("!tempfile: \"%") NPRIs _T("\" already defined!\n"), symbol);
     return PS_ERROR;
   }
-  SCRIPT_MSG(_T("!tempfile: \"%") NPRIs _T("\"=\"%") NPRIs _T("\"\n"), symbol, fpath);
-#if !defined(_WIN32) && defined(_UNICODE)
-  NSISRT_free(fpath);
-#endif
   return PS_OK;
 }
 
@@ -1034,12 +1010,26 @@ int CEXEBuild::pp_define(LineParser&line)
 
 int CEXEBuild::pp_undef(LineParser&line)
 {
-  if (definedlist.del(line.gettoken_str(1)))
+  UINT noerr = false, stopswitch = false, handled = 0;
+  for (int ti = 1; ti < line.getnumtokens(); ++ti)
   {
-    ERROR_MSG(_T("!undef: \"%") NPRIs _T("\" not defined!\n"), line.gettoken_str(1));
-    return PS_ERROR; // Should this be a warning?
+    const TCHAR *name = line.gettoken_str(ti);
+    if (!stopswitch && !_tcsicmp(name, _T("/noerrors")))
+    {
+      ++noerr;
+      continue;
+    }
+    stopswitch = ++handled;
+    if (definedlist.del(name) && !noerr)
+      warning_fl(DW_PP_UNDEF_UNDEFINED, _T("!undef: \"%") NPRIs _T("\" not defined!"), name);
+    else
+      SCRIPT_MSG(_T("!undef: \"%") NPRIs _T("\"\n"), name);
   }
-  SCRIPT_MSG(_T("!undef: \"%") NPRIs _T("\"\n"), line.gettoken_str(1));
+  if (!handled)
+  {
+    PRINTHELP();
+    return PS_ERROR;
+  }
   return PS_OK;
 }
 
@@ -1054,21 +1044,24 @@ int CEXEBuild::pp_packhdr(LineParser&line)
   return bufOf ? PS_ERROR : PS_OK;
 }
 
+template<class T> void slist_append(T&list, T&item)
+{
+  T prev;
+  for (prev = list; prev && prev->next;)
+    prev = prev->next;
+  (prev ? prev->next : list) = item;
+}
+
 int CEXEBuild::pp_finalize(LineParser&line)
 {
   TCHAR* cmdstr = line.gettoken_str(1);
   int validparams = false;
-  struct postbuild_cmd *newcmd, *prevcmd;
-  newcmd = (struct postbuild_cmd*) (new BYTE[FIELD_OFFSET(struct postbuild_cmd, cmd[_tcsclen(cmdstr)+1])]);
-  newcmd->next = NULL, _tcscpy(newcmd->cmd, cmdstr);
-  newcmd->cmpop = line.gettoken_enum(2, _T("<\0>\0<>\0=\0ignore\0")), newcmd->cmpval = line.gettoken_int(3, &validparams);
+  postbuild_cmd *newcmd = postbuild_cmd::make(cmdstr, line.gettoken_enum(2, _T("<\0>\0<>\0=\0ignore\0")), line.gettoken_int(3, &validparams));
   if (line.getnumtokens() == 1+1)
-    newcmd->cmpop = 4, validparams = true; // just a command, ignore the exit code
+    newcmd->cmpop = 4, validparams = true; // Just a command, ignore the exit code
   if (newcmd->cmpop == -1 || !validparams)
     PRINTHELP();
-  for (prevcmd = postbuild_cmds; prevcmd && prevcmd->next;)
-    prevcmd = prevcmd->next;
-  if (prevcmd) prevcmd->next = newcmd; else postbuild_cmds = newcmd;
+  slist_append(postbuild_cmds, newcmd);
   SCRIPT_MSG(_T("!finalize: \"%") NPRIs _T("\"\n"), cmdstr);
   return PS_OK;
 }

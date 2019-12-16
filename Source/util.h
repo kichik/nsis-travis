@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,9 @@ size_t my_strftime(TCHAR *s, size_t max, const TCHAR  *fmt, const struct tm *tm)
 // Adds the bitmap in filename using resource editor re as id id.
 // If width or height are specified it will also make sure the bitmap is in that size
 int update_bitmap(CResourceEditor* re, WORD id, const TCHAR* filename, int width=0, int height=0, int maxbpp=0);
+tstring make_friendly_resource_path(const TCHAR*rt, const TCHAR*rn, LANGID rl);
 
+TCHAR* create_tempfile_path();
 tstring get_full_path(const tstring& path);
 tstring get_dir_name(const tstring& path);
 tstring get_file_name(const tstring& path);
@@ -58,6 +60,7 @@ inline tstring& path_append(tstring& base, const tstring& more) { return path_ap
 inline bool IsAgnosticPathSeparator(const TCHAR c) { return _T('\\') == c || _T('/') == c; }
 bool IsWindowsPathRelative(const TCHAR *p);
 
+tstring replace_all(const TCHAR*str, const TCHAR*find, const TCHAR* replace);
 tstring lowercase(const tstring&);
 tstring get_string_prefix(const tstring& str, const tstring& separator);
 tstring get_string_suffix(const tstring& str, const tstring& separator);
@@ -237,6 +240,7 @@ BOOL IsValidCodePage(UINT CodePage);
 #else
 #define CharNext CharNextA
 #endif
+#define NSISRT_free_is_STDC_free() 1 // NSISRT_free == free
 #define NSISRT_free(p) ( free((void*)(p)) )
 wchar_t* NSISRT_mbtowc(const char *Str);
 char* NSISRT_wctomb(const wchar_t *Str);
@@ -306,7 +310,7 @@ template<class R, class T> inline R debugtruncate_cast(T t,const char*f,unsigned
 #ifdef MAKENSIS
   if (sizeof(T) > sizeof(R) && !( (t <= (T)(~((R)0))) )) {
     _tprintf(_T("unsafe truncate_cast: %") NPRIns _T(":%u\n"),f,l);
-    if (sizeof(T) <= sizeof(void*)) _tprintf(_T("\t0x%p > %0xp\n"),(void*)(UINT_PTR)(t),(void*)(UINT_PTR)(~((R)0)));
+    if (sizeof(T) <= sizeof(void*)) _tprintf(_T("\t%ph > %ph\n"),(void*)(UINT_PTR)(t),(void*)(UINT_PTR)(~((R)0)));
   }
 #endif
   return internaltruncate_cast<R>(t);

@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include "strlist.h"
 #include "winchar.h"
 #include "utf.h"
+#include "BinInterop.h"
 
 #ifndef _WIN32
 #  include <ctype.h>
@@ -142,62 +143,35 @@ size_t my_strftime(TCHAR *s, size_t max, const TCHAR  *fmt, const struct tm *tm)
 int update_bitmap(CResourceEditor* re, WORD id, const TCHAR* filename, int width/*=0*/, int height/*=0*/, int maxbpp/*=0*/) {
   FILE *f = FOPEN(filename, ("rb"));
   if (!f) return -1;
-  if (fgetc(f) != 'B' || fgetc(f) != 'M') {
-    fclose(f);
-    return -2;
+  signed char hdr[14+124], retval = -2;
+  size_t size = fread(hdr, 1, sizeof(hdr), f);
+  GENERICIMAGEINFO info;
+  if (IsBMPFile(hdr, size, &info) && 0 == fseek(f, 0, SEEK_SET) && !info.IsTopDownBitmap())
+  {
+    if ((width && width != (int) info.Width) || (height && height != (int) info.Height))
+      retval = -3;
+    else if (maxbpp && maxbpp < info.BPP)
+      retval = -4;
+    else if (re->UpdateResource(RT_BITMAP, id, NSIS_DEFAULT_LANG, f, CResourceEditor::TM_AUTO))
+      retval = 0;
   }
-  if (width != 0) {
-    INT32 biWidth;
-    fseek(f, 18, SEEK_SET); // Seek to the width member of the header
-    size_t nio = fread(&biWidth, sizeof(INT32), 1, f);
-    FIX_ENDIAN_INT32_INPLACE(biWidth);
-    if (nio != 1 || width != biWidth) {
-      fclose(f);
-      return -3;
-    }
-  }
-  if (height != 0) {
-    INT32 biHeight;
-    fseek(f, 22, SEEK_SET); // Seek to the height member of the header
-    size_t nio = fread(&biHeight, sizeof(INT32), 1, f);
-    FIX_ENDIAN_INT32_INPLACE(biHeight);
-    // Bitmap height can be negative too...
-    if (nio != 1 || height != abs(biHeight)) {
-      fclose(f);
-      return -3;
-    }
-  }
-  if (maxbpp != 0) {
-    WORD biBitCount;
-    fseek(f, 28, SEEK_SET); // Seek to the bitcount member of the header
-    size_t nio = fread(&biBitCount, sizeof(WORD), 1, f);
-    FIX_ENDIAN_INT16_INPLACE(biBitCount);
-    if (nio != 1 || biBitCount > maxbpp) {
-      fclose(f);
-      return -4;
-    }
-  }
-  DWORD dwSize;
-  fseek(f, 2, SEEK_SET);
-  size_t nio = fread(&dwSize, sizeof(DWORD), 1, f);
-  if (nio != 1) {
-    fclose(f);
-    return -3;
-  }
-  FIX_ENDIAN_INT32_INPLACE(dwSize);
-  dwSize -= 14;
-  unsigned char* bitmap = (unsigned char*)malloc(dwSize);
-  if (!bitmap) {
-    fclose(f);
-    throw bad_alloc();
-  }
-  bool gotbmdata = !fseek(f, 14, SEEK_SET) && dwSize == fread(bitmap, 1, dwSize, f);
-  int retval = gotbmdata ? 0 : -2;
   fclose(f);
-  if (gotbmdata)
-    re->UpdateResource(RT_BITMAP, id, NSIS_DEFAULT_LANG, bitmap, dwSize);
-  free(bitmap);
   return retval;
+}
+
+tstring make_friendly_resource_path(const TCHAR*rt, const TCHAR*rn, LANGID rl)
+{
+  tstring s = _T("");
+  TCHAR buf[42], sep = _T('\\');
+  s += IS_INTRESOURCE(rt) ? (wsprintf(buf, _T("#%d"), (int)(size_t) rt), buf) : rt;
+  s += sep;
+  s += IS_INTRESOURCE(rn) ? (wsprintf(buf, _T("#%d"), (int)(size_t) rn), buf) : rn;
+  s += sep;
+  if (rl == CResourceEditor::ALLLANGID)
+    s += _T("All");
+  else
+    s += (wsprintf(buf, _T("%d"), (int)(size_t) rl), buf);
+  return s;
 }
 
 #ifndef _WIN32
@@ -740,6 +714,33 @@ char* create_file_view_readonly(const TCHAR *filepath, FILEVIEW&mmfv)
 #endif
 }
 
+TCHAR* create_tempfile_path()
+{
+  TCHAR *tfpath = NULL;
+#ifdef _WIN32
+  TCHAR buftmpdir[MAX_PATH], buf[MAX_PATH];
+  DWORD cch = GetTempPath(COUNTOF(buftmpdir), buftmpdir);
+  if (cch && cch < COUNTOF(buftmpdir) && GetTempFileName(buftmpdir, _T("nst"), 0, buf))
+    tfpath = _tcsdup(buf);
+#else //! _WIN32
+  char narrowpath[] = ("/tmp/makensisXXXXXX");
+  const mode_t org_umask = umask(0077);
+  int fd = mkstemp(narrowpath);
+  umask(org_umask);
+  if (fd != -1)
+  {
+#ifdef _UNICODE
+    assert(NSISRT_free_is_STDC_free());
+    tfpath = NSISRT_mbtowc(narrowpath);
+#else
+    tfpath = _tcsdup(narrowpath);
+#endif
+    close(fd);
+  }
+#endif //~ _WIN32
+  return tfpath;
+}
+
 tstring get_full_path(const tstring &path) {
 #ifdef _WIN32
   TCHAR real_path[1024], *fnpart;
@@ -877,6 +878,16 @@ bool IsWindowsPathRelative(const TCHAR *p)
 {
   if (_T('\\') == p[0]) return _T('\\') != p[1]; // Current drive relative, not (unverified) UNC
   return PathGetDosDriveNumber(p) < 0;
+}
+
+tstring replace_all(const TCHAR *str, const TCHAR *find, const TCHAR *repl)
+{
+  tstring out = str;
+  for (size_t cchF = _tcslen(find), cchR = _tcslen(repl), i = 0; ; i += cchR)
+    if ((i = out.find(find, i)) == tstring::npos)
+      return out;
+    else
+      out.replace(i, cchF, repl);
 }
 
 struct ToLower
@@ -1156,12 +1167,6 @@ bool GetFileSize64(HANDLE hFile, ULARGE_INTEGER &uli)
   uli.LowPart = GetFileSize(hFile, &uli.HighPart);
   return INVALID_FILE_SIZE != uli.LowPart || !GetLastError();
 }
-static HANDLE NSISRT_GetConsoleScreenHandle()
-{
-  DWORD cm;
-  HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
-  return GetConsoleMode(hCon, &cm) ? hCon : GetStdHandle(STD_ERROR_HANDLE);
-}
 #endif //~ _WIN32
 #if defined(_WIN32) && defined(_UNICODE) && defined(MAKENSIS)
 #include <io.h> // for _get_osfhandle
@@ -1197,7 +1202,7 @@ bool WINAPI WinStdIO_OStreamWrite(WINSIO_OSDATA&osd, const wchar_t *Str, UINT cc
   if ((UINT)-1 == cch) cch = (UINT)_tcslen(Str);
   DWORD cbio;
   if (WinStdIO_IsConsole(osd))
-    return !!WriteConsoleW(osd.hNative, Str, cch, &cbio, 0) || !cch;
+    return WriteConsoleW(osd.hNative, Str, cch, &cbio, 0) || !cch;
   NOStream strm(osd.hCRT);
   NStreamEncoding &enc = strm.StreamEncoding();
   enc.SetCodepage(osd.cp);
@@ -1272,6 +1277,12 @@ bool NSISRT_Initialize() // Init function for MakeNSIS Win32
 #elif defined(_WIN32)
 #define NSISRT_FastGetConsoleScreenHandle NSISRT_GetConsoleScreenHandle
 bool NSISRT_Initialize() { return true; } // Init function for non-MakeNSIS Win32 (NSISRT_DEFINEGLOBALS sets g_output and g_errout)
+static HANDLE NSISRT_GetConsoleScreenHandle()
+{
+  DWORD cm;
+  HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE);
+  return GetConsoleMode(hCon, &cm) ? hCon : GetStdHandle(STD_ERROR_HANDLE);
+}
 #endif
 
 void PrintColorFmtErrMsg(const TCHAR *fmtstr, va_list args)

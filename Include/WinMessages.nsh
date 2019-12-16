@@ -46,6 +46,7 @@ TBM     Track bar
 UDM     Up-down control
 HKM     Hot key control
 IPM     IP address control
+NCM     Network address control
 -----------------------------------
 
 NOT included messages (WM_USER + X)
@@ -238,7 +239,8 @@ TVM     Tree-view control
 !define /math EM_GETOPTIONS      ${WM_USER} + 78
 !define /math EM_SETUNDOLIMIT    ${WM_USER} + 82 ; v2+
 !define /math EM_AUTOURLDETECT   ${WM_USER} + 91
-!define /math EM_SETEDITSTYLE    ${WM_USER} + 204 ; v3+
+!define /Math EM_SETTEXTEX       ${WM_USER} + 97 ; v3+
+!define /math EM_SETEDITSTYLE    ${WM_USER} + 204
 !define /math EM_SETFONTSIZE     ${WM_USER} + 223
 
 !define EN_MSGFILTER 0x0700
@@ -822,6 +824,12 @@ ${_NSIS_DEFAW} ACM_OPEN
 !define /math IPM_SETRANGE     ${WM_USER} + 103
 !define /math IPM_SETFOCUS     ${WM_USER} + 104
 !define /math IPM_ISBLANK      ${WM_USER} + 105
+
+#NetworkAddress control#
+!define /math NCM_GETADDRESS ${WM_USER} + 1 ; Vista+
+!define /math NCM_SETALLOWTYPE ${WM_USER} + 2
+!define /math NCM_GETALLOWTYPE ${WM_USER} + 3
+!define /math NCM_DISPLAYERRORTIP ${WM_USER} + 4
 
 !verbose pop
 !endif

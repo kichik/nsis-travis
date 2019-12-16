@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,24 @@ using namespace std;
 
 #define REGROOTKEYTOINT(hk) ( (INT) (((INT_PTR)(hk)) & 0xffffffff) ) // Masking off non-existing top bits to make GCC happy
 #define REGROOTKEYTOINTEX(hk, removeviewbits) ( REGROOTKEYTOINT(hk) & ~(removeviewbits ? (REGROOTVIEW32|REGROOTVIEW64) : 0) )
+
+#ifdef NSIS_CONFIG_VISIBLE_SUPPORT
+typedef enum { LU_INVALID = -1, LU_PIXEL = 0, LU_DIALOG } LAYOUTUNIT;
+static int ParseLayoutUnit(const TCHAR*Str, LAYOUTUNIT&LU)
+{
+  TCHAR buf[200];
+  int succ, val = LineParser::parse_int(Str, &succ);
+  if (succ) return (LU = LU_PIXEL, val);
+  size_t cch = my_strncpy(buf, Str, COUNTOF(buf));
+  if (cch > 1 && S7IsChEqualI('u', buf[cch-1])) // Something with a 'u' suffix?
+  {
+    buf[cch-1] = _T('\0');
+    val = LineParser::parse_int(buf, &succ);
+    if (succ) return (LU = LU_DIALOG, val);
+  }
+  return (LU = LU_INVALID, -1);
+}
+#endif
 
 #ifdef NSIS_CONFIG_ENHANCEDUI_SUPPORT
 static bool LookupWinSysColorId(const TCHAR*Str, UINT&Clr)
@@ -1261,7 +1279,10 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
       {
         if (SetInnerString(NLF_NAME,line.gettoken_str(1)) == PS_WARNING)
           warning_fl(DW_INNERSTRING_MULTISETWASTE, _T("%") NPRIs _T(": specified multiple times, wasting space"),line.gettoken_str(0));
-        SetInnerString(NLF_NAME_DA,line.gettoken_str(2));
+        tstring da;
+        const TCHAR *normstr = line.gettoken_str(1), *dastr = line.gettoken_str(2);
+        if (!*dastr && _tcschr(normstr,_T('&'))) dastr = (da = replace_all(normstr,_T("&"),_T("&&"))).c_str();
+        SetInnerString(NLF_NAME_DA,dastr);
         SCRIPT_MSG(_T("Name: \"%") NPRIs _T("\""),line.gettoken_str(1));
         if (*line.gettoken_str(2))
           SCRIPT_MSG(_T(" \"%") NPRIs _T("\""),line.gettoken_str(2));
@@ -1441,12 +1462,8 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
         }
         else
         {
-          TCHAR *itname = line.gettoken_str(1);
-
-          if (!_tcsnicmp(itname, _T("un."), 3)) {
-            set_uninstall_mode(1);
-            itname += 3;
-          }
+          const TCHAR *itname = line.gettoken_str(1), *defname = line.gettoken_str(2), setdef = *defname, *eqstr = setdef ? _T("=") : _T("");
+          if (!_tcsnicmp(itname, _T("un."), 3)) set_uninstall_mode(1), itname += 3;
 
           for (x = 0; x < NSIS_MAX_INST_TYPES && cur_header->install_types[x]; x++);
           if (x == NSIS_MAX_INST_TYPES)
@@ -1457,7 +1474,8 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
           else
           {
             cur_header->install_types[x] = add_string(itname);
-            SCRIPT_MSG(_T("InstType: %") NPRIs _T("%d=\"%") NPRIs _T("\"\n"), uninstall_mode ? _T("(uninstall) ") : _T(""), x+1, itname);
+            if (setdef) definedlist.set_si32(defname, x);
+            SCRIPT_MSG(_T("InstType: %") NPRIs _T("\"%") NPRIs _T("\" (%") NPRIs _T("%") NPRIs _T("%d)\n"), uninstall_mode ? _T("(uninstall) ") : _T(""), itname, defname, eqstr, x);
           }
 
           set_uninstall_mode(0);
@@ -2121,19 +2139,20 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
       }
     return PS_OK;
     case TOK_ADDBRANDINGIMAGE:
-#ifdef _WIN32
       try {
-        int k=line.gettoken_enum(1,_T("top\0left\0bottom\0right\0"));
-        int wh=line.gettoken_int(2);
+        LAYOUTUNIT whtype, padtype;
+        int k = line.gettoken_enum(1,_T("top\0left\0bottom\0right\0")), defpadding = 2;
+        int wh = ParseLayoutUnit(line.gettoken_str(2), whtype);
         if (k == -1) PRINTHELP();
-        int padding = 2;
-        if (line.getnumtokens() == 4)
-          padding = line.gettoken_int(3);
-
+        int padding = (line.getnumtokens() >= 4) ? ParseLayoutUnit(line.gettoken_str(3), padtype) : (padtype = whtype, defpadding);
+        if (whtype == LU_INVALID || whtype != padtype)
+          throw runtime_error("Invalid number!");
         init_res_editor();
         BYTE* dlg = res_editor->GetResource(RT_DIALOG, IDD_INST, NSIS_DEFAULT_LANG);
         CDialogTemplate dt(dlg, build_unicode, uDefCodePage);
         res_editor->FreeResource(dlg);
+        if (whtype != LU_DIALOG && !CDialogTemplate::SupportsDialogUnitComputation())
+          throw runtime_error("Must use dialog units on non-Win32 platforms!");
 
         DialogItemTemplate brandingCtl = {0,};
         brandingCtl.dwStyle = SS_BITMAP | WS_CHILD | WS_VISIBLE;
@@ -2142,32 +2161,25 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
         brandingCtl.szTitle = NULL;
         brandingCtl.wId = IDC_BRANDIMAGE;
         brandingCtl.sHeight = brandingCtl.sWidth = wh;
-        dt.PixelsToDlgUnits(brandingCtl.sWidth, brandingCtl.sHeight);
-        if (k%2) {
-          // left (1) / right (3)
-
+        if (whtype == LU_PIXEL) dt.PixelsToDlgUnits(brandingCtl.sWidth, brandingCtl.sHeight);
+        if (k%2) { // left (1) / right (3)
           if (k & 2) // right
             brandingCtl.sX += dt.GetWidth();
           else // left
             dt.MoveAll(brandingCtl.sWidth + (padding * 2), 0);
 
           dt.Resize(brandingCtl.sWidth + (padding * 2), 0);
-
           brandingCtl.sHeight = dt.GetHeight() - (padding * 2);
         }
-        else {
-          // top (0) / bottom (2)
-
+        else { // top (0) / bottom (2)
           if (k & 2) // bottom
             brandingCtl.sY += dt.GetHeight();
           else // top
             dt.MoveAll(0, brandingCtl.sHeight + (padding * 2));
 
           dt.Resize(0, brandingCtl.sHeight + (padding * 2));
-
           brandingCtl.sWidth = dt.GetWidth() - (padding * 2);
         }
-
         dt.AddItem(brandingCtl);
 
         DWORD dwDlgSize;
@@ -2175,8 +2187,9 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
         res_editor->UpdateResource(RT_DIALOG, IDD_INST, NSIS_DEFAULT_LANG, dlg, dwDlgSize);
         dt.FreeSavedTemplate(dlg);
 
-        dt.DlgUnitsToPixels(brandingCtl.sWidth, brandingCtl.sHeight);
-        SCRIPT_MSG(_T("AddBrandingImage: %") NPRIs _T(" %ux%u\n"), line.gettoken_str(1), brandingCtl.sWidth, brandingCtl.sHeight);
+        if (whtype == LU_PIXEL) dt.DlgUnitsToPixels(brandingCtl.sWidth, brandingCtl.sHeight);
+        const char* unitstr = whtype == LU_PIXEL ? "pixels" : "dialog units";
+        SCRIPT_MSG(_T("AddBrandingImage: %") NPRIs _T(" %ux%u %") NPRIns _T("\n"), line.gettoken_str(1), brandingCtl.sWidth, brandingCtl.sHeight, unitstr);
 
         branding_image_found = true;
         branding_image_id = IDC_BRANDIMAGE;
@@ -2186,10 +2199,6 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
         return PS_ERROR;
       }
     return PS_OK;
-#else
-      ERROR_MSG(_T("Error: AddBrandingImage is disabled for non Win32 platforms.\n"));
-    return PS_ERROR;
-#endif //~ _WIN32
     case TOK_SETFONT:
     {
       unsigned char failed = 0;
@@ -2231,6 +2240,65 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
     return PS_ERROR;
 #endif //~ NSIS_CONFIG_VISIBLE_SUPPORT
 
+    case TOK_PEADDRESOURCE:
+    {
+      init_res_editor();
+      int tokidx = 1, ovr = 0, rep = 0;
+      if (!_tcsicmp(line.gettoken_str(tokidx), _T("/OVERWRITE"))) // Update the resource even if it exists
+        ++ovr, ++tokidx;
+      else if (!_tcsicmp(line.gettoken_str(tokidx), _T("/REPLACE"))) // Only update existing resource
+        ++rep, ++tokidx;
+      const TCHAR *rt = line.gettoken_str(tokidx+1), *rnraw = line.gettoken_str(tokidx+2), *rlraw = line.gettoken_str(tokidx+3);
+      if (!*rlraw)
+        rlraw = _T("Default"); // Language parameter is optional
+      LANGID rl = res_editor->ParseResourceTypeNameLangString(&rt, &rnraw, rlraw), foundrl;
+      if (rl == CResourceEditor::INVALIDLANGID || rl == CResourceEditor::ALLLANGID)
+        PRINTHELP();
+      WORD rn = (WORD)(size_t) rnraw; assert(!CResourceEditor::EditorSupportsStringNames());
+      bool exists = res_editor->ResourceExists(rt, rn, rl, &foundrl);
+      if (rl == CResourceEditor::ANYLANGID)
+        rl = exists ? foundrl : NSIS_DEFAULT_LANG;
+      if ((rep && !exists) || (!ovr && exists))
+      {
+        ERROR_MSG(_T("Error: Resource %") NPRIns _T("\n"), rep ? ("does not exist") : ("already exists"));
+        return PS_ERROR;
+      }
+      int result = PS_ERROR;
+      if (FILE*f = FOPEN(line.gettoken_str(tokidx+0), ("rb")))
+      {
+        if (res_editor->UpdateResource(rt, rn, rl, f, CResourceEditor::TM_AUTO))
+        {
+          SCRIPT_MSG(_T("PEAddResource: %") NPRIs _T("=%") NPRIs _T("\n"), make_friendly_resource_path(rt, rnraw, rl).c_str(), line.gettoken_str(tokidx+0));
+          result = PS_OK;
+        }
+        fclose(f);
+      }
+      return result;
+    }
+    return PS_OK;
+    case TOK_PEREMOVERESOURCE:
+    {
+      init_res_editor();
+      int tokidx = 1, noerr = 0;
+      if (!_tcsicmp(line.gettoken_str(tokidx), _T("/NOERRORS")))
+        ++noerr, ++tokidx;
+      const TCHAR *rt = line.gettoken_str(tokidx+0), *rnraw = line.gettoken_str(tokidx+1), *rlraw = line.gettoken_str(tokidx+2);
+      LANGID rl = res_editor->ParseResourceTypeNameLangString(&rt, &rnraw, rlraw);
+      if (rl == CResourceEditor::INVALIDLANGID || rl == CResourceEditor::ANYLANGID)
+        PRINTHELP();
+      WORD rn = (WORD)(size_t) rnraw; assert(!CResourceEditor::EditorSupportsStringNames());
+      if (!noerr && !res_editor->ResourceExists(rt, rn, rl))
+      {
+        ERROR_MSG(_T("Error: Resource %") NPRIns _T("\n"), ("does not exist"));
+        return PS_ERROR;
+      }
+      if (res_editor->DeleteResource(rt, rn, rl, CResourceEditor::TM_AUTO))
+        SCRIPT_MSG(_T("PERemoveResource: %") NPRIs _T("\n"), make_friendly_resource_path(rt, rnraw, rl).c_str());
+      else if (!noerr)
+        return PS_ERROR;
+    }
+    return PS_OK;
+
     case TOK_PEDLLCHARACTERISTICS:
       {
         int s1, s2;
@@ -2240,7 +2308,7 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
         SCRIPT_MSG(_T("PEDllCharacteristics: 0x%.4x -> 0x%.4x\n"), org, PEDllCharacteristics);
       }
       return PS_OK;
-  
+
     case TOK_PESUBSYSVER:
       {
         unsigned int mj, mi;
@@ -2263,7 +2331,7 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
       return PS_OK;
 
     case TOK_MANIFEST_DPIAWARE:
-      switch(line.gettoken_enum(1,_T("none\0notset\0false\0true\0system\0permonitor\0")))
+      switch(line.gettoken_enum(1,_T("none\0notset\0false\0true\0system\0permonitor\0explorer\0")))
       {
       case 0: // A lot of attributes use "none" so we support that along with the documented value
       case 1: manifest_dpiaware = manifest::dpiaware_notset; break;
@@ -2271,6 +2339,7 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
       case 3: // "True" == "System DPI"
       case 4: manifest_dpiaware = manifest::dpiaware_true; break;
       case 5: manifest_dpiaware = manifest::dpiaware_permonitor; break;
+      case 6: manifest_dpiaware = manifest::dpiaware_explorer; break;
       default: PRINTHELP();
       }
       return PS_OK;
@@ -2278,24 +2347,35 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
       manifest_dpiawareness = line.gettoken_str(1);
       return PS_OK;
 
+    case TOK_MANIFEST_LPAWARE:
+      switch(line.gettoken_enum(1,_T("none\0notset\0true\0false\0")))
+      {
+      case 0: // A lot of attributes use "none" so we support that along with the documented value
+      case 1: manifest_lpaware = manifest::lpaware_notset; break;
+      case 2: manifest_lpaware = manifest::lpaware_true; break;
+      case 3: manifest_lpaware = manifest::lpaware_false; break;
+      default: PRINTHELP();
+      }
+      return PS_OK;
+
     case TOK_MANIFEST_SUPPORTEDOS:
     {
       manifest_sosl.deleteall();
       if (2 == line.getnumtokens())
-      {
         switch(line.gettoken_enum(1,_T("none\0all\0")))
         {
         case 0: return PS_OK;
         case 1: return manifest_sosl.addall() ? PS_OK : PS_ERROR;
         }
-      }
       for(int argi = 1; argi < line.getnumtokens(); ++argi)
-      {
         if (!manifest_sosl.append(line.gettoken_str(argi)))
           PRINTHELP();
-      }
     }
     return PS_OK;
+    case TOK_MANIFEST_MAXVERSIONTESTED:
+      manifest_maxversiontested = line.gettoken_enum(1, _T("none\0notset\0")) == -1 ? line.gettoken_str(1) : _T("");
+      return PS_OK;
+
     case TOK_MANIFEST_DISABLEWINDOWFILTERING:
       switch(line.gettoken_enum(1,_T("notset\0false\0true")))
       {
@@ -2305,6 +2385,7 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
       default: PRINTHELP();
       }
       return PS_OK;
+
     case TOK_MANIFEST_GDISCALING:
       switch(line.gettoken_enum(1,_T("notset\0false\0true")))
       {
@@ -2590,12 +2671,15 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
     case TOK_SECTIONEND:
       SCRIPT_MSG(_T("SectionEnd\n"));
     return section_end();
-    case TOK_SECTIONIN:
+    case TOK_SECTIONINSTTYPE: // 0 based
+    case TOK_SECTIONIN: // Legacy 1 based instruction
       {
-        SCRIPT_MSG(_T("SectionIn: "));
-        for (int wt = 1; wt < line.getnumtokens(); wt++)
+        int zerobased = which_token == TOK_SECTIONINSTTYPE, itid, succ;
+        const TCHAR *cmdname = get_commandtoken_name(which_token);
+        SCRIPT_MSG(_T("%") NPRIs _T(": "), cmdname);
+        for (int ti = 0; ++ti < line.getnumtokens();)
         {
-          TCHAR *p=line.gettoken_str(wt);
+          const TCHAR *p = line.gettoken_str(ti);
           if (!_tcsicmp(p, _T("RO")))
           {
             if (section_add_flags(SF_RO) != PS_OK) return PS_ERROR;
@@ -2603,22 +2687,17 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
           }
           else
           {
-            int x=_ttoi(p)-1;
-            if (x >= 0 && x < NSIS_MAX_INST_TYPES)
+            itid = line.gettoken_int(ti, &succ) - (zerobased ? 0 : 1);
+            if (succ && itid >= 0 && itid < NSIS_MAX_INST_TYPES)
             {
-              if (section_add_install_type(1<<x) != PS_OK) return PS_ERROR;
-              SCRIPT_MSG(_T("[%d] "),x);
-            }
-            else if (x < 0)
-            {
-              PRINTHELP()
+              if (section_add_install_type(1<<itid) != PS_OK) return PS_ERROR;
+              SCRIPT_MSG(_T("[%d] "), itid);
             }
             else
             {
-              ERROR_MSG(_T("Error: SectionIn section %d out of range 1-%d\n"),x+1,NSIS_MAX_INST_TYPES);
+              ERROR_MSG(_T("Error: %") NPRIs _T(" %") NPRIs _T(" out of range %d..%d\n"), cmdname, p, 1 - zerobased, NSIS_MAX_INST_TYPES - zerobased);
               return PS_ERROR;
             }
-            p++;
           }
         }
         SCRIPT_MSG(_T("\n"));
@@ -4817,18 +4896,14 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
     case TOK_SETBRANDINGIMAGE:
     {
       SCRIPT_MSG(_T("SetBrandingImage: "));
-      if (!branding_image_found) {
-        ERROR_MSG(_T("\nError: no branding image found in chosen UI!\n"));
-        return PS_ERROR;
-      }
-      ent.which=EW_SETBRANDINGIMAGE;
+      ent.which=EW_LOADANDSETIMAGE;
       for (int i = 1; i < line.getnumtokens(); i++)
         if (!_tcsnicmp(line.gettoken_str(i),_T("/IMGID="),7)) {
           ent.offsets[1]=_ttoi(line.gettoken_str(i)+7);
           SCRIPT_MSG(_T("/IMGID=%d "),ent.offsets[1]);
         }
         else if (!_tcsicmp(line.gettoken_str(i),_T("/RESIZETOFIT"))) {
-          ent.offsets[2]=1; // must be 1 or 0
+          ent.offsets[2]=LASIF_FITCTLW|LASIF_FITCTLH;
           SCRIPT_MSG(_T("/RESIZETOFIT "));
         }
         else if (!ent.offsets[0]) {
@@ -4839,14 +4914,46 @@ int CEXEBuild::doCommand(int which_token, LineParser &line)
           SCRIPT_MSG(_T("\n"));
           PRINTHELP();
         }
-
-      if (!ent.offsets[1])
-        ent.offsets[1]=branding_image_id;
       SCRIPT_MSG(_T("\n"));
+      if (!ent.offsets[1])
+      {
+        ent.offsets[1]=branding_image_id;
+        if (!branding_image_found) {
+          ERROR_MSG(_T("\nError: no branding image found in chosen UI!\n"));
+          return PS_ERROR;
+        }
+      }
+      ent.offsets[2]|=LASIF_LR_LOADFROMFILE|LASIF_STRID;
+    }
+    return add_entry(&ent);
+    case TOK_LOADANDSETIMAGE:
+    {
+      SCRIPT_MSG(_T("LoadAndSetImage: "));
+      ent.which=EW_LOADANDSETIMAGE;
+      int tidx = 1, conv = 1, fail = 0;
+      unsigned int flags = LASIF_HWND;
+      for (; tidx < line.getnumtokens(); tidx++)
+      {
+        if (!_tcsicmp(line.gettoken_str(tidx),_T("/EXERESOURCE"))) flags |= LASIF_EXERES;
+        else if (!_tcsicmp(line.gettoken_str(tidx),_T("/STRINGID"))) flags |= LASIF_STRID;
+        else if (!_tcsicmp(line.gettoken_str(tidx),_T("/RESIZETOFIT"))) flags |= LASIF_FITCTLW|LASIF_FITCTLH;
+        else if (!_tcsicmp(line.gettoken_str(tidx),_T("/RESIZETOFITWIDTH"))) flags |= LASIF_FITCTLW;
+        else if (!_tcsicmp(line.gettoken_str(tidx),_T("/RESIZETOFITHEIGHT"))) flags |= LASIF_FITCTLH;
+        else if (!_tcsicmp(line.gettoken_str(tidx),_T("/GETDLGITEM"))) flags &= ~LASIF_HWND; // Reuses TOK_SETBRANDINGIMAGE functionality
+        else { if (line.gettoken_str(tidx)[0] == '/') ++fail; break; }
+      }
+      ent.offsets[1]=(flags & LASIF_HWND) ? add_string(line.gettoken_str(tidx+0)) : line.gettoken_int(tidx+0, &conv); fail += !conv; // HWND/CtrlId
+      flags |= (line.gettoken_int(tidx+1, &conv) & LASIM_IMAGE); fail += !conv;
+      flags |= (line.gettoken_int(tidx+2, &conv) & LASIM_LR); fail += !conv;
+      ent.offsets[0]=(flags & LASIF_STRID) ? add_string(line.gettoken_str(tidx+3)) : line.gettoken_int(tidx+3, &conv); fail += !conv; // Image path/resid
+      ent.offsets[2]=flags;
+      SCRIPT_MSG(_T("%") NPRIs _T(" %#x \"%") NPRIs _T("\" \n"), line.gettoken_str(tidx+0), flags, line.gettoken_str(tidx+3));
+      if (fail) PRINTHELP();
     }
     return add_entry(&ent);
 #else
     case TOK_SETBRANDINGIMAGE:
+    case TOK_LOADANDSETIMAGE:
       ERROR_MSG(_T("Error: %") NPRIs _T(" specified, NSIS_CONFIG_ENHANCEDUI_SUPPORT not defined.\n"),line.gettoken_str(0));
       return PS_ERROR;
 #endif //~ NSIS_SUPPORT_CREATEFONT

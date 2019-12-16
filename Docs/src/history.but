@@ -1,8 +1,54 @@
 \A{history} Changelog and Release Notes
 
+\H{v3.05} 3.05
+
+Released on December 15th, 2019
+
+\S1{v3.05-rl} Release Notes
+
+ANSI targets are deprecated, consider moving to Unicode.
+
+\S1{v3.05-cl} Changelog
+
+\S2{} Major Changes
+
+\b Added \R{apeaddresource}{PEAddResource} and \R{aperemoveresource}{PERemoveResource}
+
+\b Added \R{loadandsetimage}{LoadAndSetImage}
+
+\b Allow quoted library path in System::Call (\W{http://sf.net/p/nsis/bugs/546}{bug #546} and \W{http://sf.net/p/nsis/bugs/1225}{bug #1225})
+
+\b Improved \L{../Docs/nsExec/nsExec.txt}{nsExec} Unicode and tab output parsing (\W{http://sf.net/p/nsis/bugs/1232}{bug #1232})
+
+\S2{} Minor Changes
+
+\b Added experimental \R{amanifestlongpathaware}{ManifestLongPathAware} attribute
+
+\# Undocumented: \b Added ManifestMaxVersionTested
+
+\b %1 in \R{finalize}{!finalize} command can be specified multiple times
+
+\b Fixed -O stderr stream issue (\W{http://sf.net/p/nsis/bugs/1221}{bug #1221})
+
+\b Fixed \R{library_install}{InstallLib} .NSI space-in-path bug (\W{http://sf.net/p/nsis/bugs/1222}{bug #1222})
+
+\b \L{../Docs/StrFunc/StrFunc.txt}{StrFunc} now supports a "using" idiom to help with forward-declaration of functions (\W{http://sf.net/p/nsis/bugs/1229}{bug #1229})
+
+\b Added \R{ssectioninsttype}{SectionInstType}
+
+\b Zero uninitialized data in icon group (\W{http://sf.net/p/nsis/bugs/1230}{bug #1230})
+
+\b Automatically doubles ampersands in the \R{aname}{Name} attribute
+
+\b Fixed \L{../Docs/nsDialogs/Readme.html}{nsDialogs} CB/LB_Get/SetItemData macros (\W{http://sf.net/p/nsis/bugs/1238}{bug #1238})
+
+\S2{} Translations
+
+\b Updated Hindi (\W{http://sf.net/p/nsis/patches/291}{patch #291}) and Portuguese (\W{http://sf.net/p/nsis/bugs/1219}{bug #1219})
+
 \H{v3.04} 3.04
 
-Released on ??? ??th, 20??
+Released on December 15th, 2018
 
 \S1{v3.04-cl} Changelog
 
@@ -10,25 +56,39 @@ Released on ??? ??th, 20??
 
 \b Added IsNativeMachineArchitecture helper macros to x64.nsh
 
+\b Added experimental WinVer "Windows as a Service" detection macros
+
+\b Added MakeNSISW window info "spy" tool
+
 \S2{} Minor Changes
 
 \b Added MUI_TEXTCOLOR setting
+
+\b nsDialogs::OnNotify can now return values back to Windows
 
 \b Added LIBRARY_INSTALL_EQUAL_VERSION \R{library_install}{InstallLib} option
 
 \b Added NTMARTA to preload list to fix rare Windows 7 security issue (\W{http://sf.net/p/nsis/bugs/1204}{bug #1204})
 
-\b MakeNSIS prints -CMDHELP to stdout (\W{http://sf.net/p/nsis/bugs/1203}{bug #1203})
+\b AddBrandingImage now supports dialog units
+
+\# Undocumented: \b Added ManifestDisableWindowFiltering and ManifestGdiScaling
 
 \b Fixed !macroundef of last defined macro bug
+
+\b Fixed MultiUser caption string bug (\W{http://sf.net/p/nsis/bugs/1012}{bug #1012})
+
+\b !undef issues warnings instead of errors
+
+\b MakeNSIS prints -CMDHELP to stdout (\W{http://sf.net/p/nsis/bugs/1203}{bug #1203})
+
+\b Removed LibraryLocal utility
 
 \S2{} Translations
 
 \b Added Hind\u012b{i} (\W{http://sf.net/p/nsis/patches/289}{patch #289})
 
-\b Fixed minor Spanish bug (\W{http://sf.net/p/nsis/bugs/1205}{bug #1205})
-
-\b Updated Mongolian
+\b Updated Belarusian, German (\W{http://sf.net/p/nsis/bugs/1023}{bug #1023}), Mongolian and Spanish (\W{http://sf.net/p/nsis/bugs/1205}{bug #1205})
 
 \H{v3.03} 3.03
 
@@ -61,6 +121,8 @@ Released on January 29th, 2018
 \b Added IntOp and System::Int64Op >>> operator
 
 \b Added more !define /math operators
+
+\# Undocumented: \b Added ManifestDPIAwareness
 
 \b Added WinVer.nsh IsDomainController (\W{http://sf.net/p/nsis/patches/286}{patch #286})
 
@@ -128,7 +190,7 @@ Released on July 23rd, 2017
 
 \b Added support for MUI_UNCONFIRMPAGE_VARIABLE (\W{http://sf.net/p/nsis/feature-requests/511}{RFE #511}) and MUI_PAGE_CUSTOMFUNCTION_DESTROYED
 
-\b Unicode nsExec now supports the /OEM switch (\W{http://sf.net/p/nsis/bugs/1171}{bug #1171})
+\b Unicode \L{../Docs/nsExec/nsExec.txt}{nsExec} now supports the /OEM switch (\W{http://sf.net/p/nsis/bugs/1171}{bug #1171})
 
 \S2{} Translations
 
@@ -1748,7 +1810,7 @@ Released on November 27th, 2006
 
 \S2{} Build System
 
-\b Added \W{http://msdn.microsoft.com/vstudio/express/visualc/}{Microsoft Visual C++ 2005 Express} support
+\b Added \W{https://web.archive.org/web/20060203051838/http://msdn.microsoft.com:80/vstudio/express/visualc/}{Microsoft Visual C++ 2005 Express} support
 
 \b SCons requirement upgraded to 0.96.93
 
@@ -2116,7 +2178,7 @@ Released on January 21st, 2006
 
 \S1{v2.13-rn} Release Notes
 
-\b Language detection has changed. The default language is now set to the user's user-interface language instead of the locale language, as suggested by \W{http://msdn.microsoft.com/library/default.asp?url=/library/en-us/intl/nls_0xrn.asp}{MSDN}. To restore the old behavior, use \c{System::Call "kernel32::GetUserDefaultLangID()i.a"} in \R{oninit}{.onInit}.
+\b Language detection has changed. The default language is now set to the user's user-interface language instead of the locale language, as suggested by \W{http://web.archive.org/web/20050913082611/http://msdn.microsoft.com/library/en-us/intl/nls_0xrn.asp}{MSDN}. To restore the old behavior, use \c{System::Call "kernel32::GetUserDefaultLangID()i.a"} in \R{oninit}{.onInit}.
 
 \S1{v2.13-cl} Changelog
 
@@ -2733,7 +2795,7 @@ Released on October 23rd, 2004
 
 \b Made the datablock optimizer much faster
 
-\b Made the installer deny reboots while running (\W{http://msdn.microsoft.com/library/en-us/sysinfo/base/wm_queryendsession.asp}{WM_QUERYENDSESSION})
+\b Made the installer deny reboots while running (\W{http://msdn.microsoft.com/en-us/library/aa376890}{WM_QUERYENDSESSION})
 
 \b Made the \R{reboot}{Reboot} command first quit and then reboot so everything is always cleaned-up
 

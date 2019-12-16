@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,8 +91,15 @@ bool SupportedOSList::append(const TCHAR* osid)
 }
 
 
-string generate(flags featureflags, comctl comctl_selection, exec_level exec_level_selection, dpiaware dpia, const TCHAR*dpia2, SupportedOSList& sosl)
+string generate(comctl comctl_selection, exec_level exec_level_selection, const SPECIFICATION&spec)
 {
+  flags featureflags = spec.Flags;
+  dpiaware dpia = spec.DPIA;
+  const TCHAR *dpia2 = spec.DPIA2;
+  longpathaware lpa = spec.lpaware;
+  SupportedOSList& sosl = *spec.pSOSL;
+  const TCHAR *mvt = spec.MaxVersionTested;
+
   bool default_or_empty_sosl = sosl.isdefaultlist() || !sosl.getcount();
   if (comctl_selection == comctl_old && exec_level_selection == exec_level_none && default_or_empty_sosl && dpiaware_notset == dpia)
     return "";
@@ -136,15 +143,21 @@ string generate(flags featureflags, comctl comctl_selection, exec_level exec_lev
   }
 
   int soslcount = sosl.getcount();
-  if (soslcount)
+  if (soslcount || *mvt)
   {
     char buf[38+1];
     xml += "<compatibility xmlns=\"urn:schemas-microsoft-com:compatibility.v1\"><application>";
     while(soslcount--)
     {
       xml += "<supportedOS Id=\"";
-      RawTStrToASCII(sosl.get(soslcount), buf, COUNTOF(buf));
-      xml += buf, xml +=  "\"/>";
+      xml += (RawTStrToASCII(sosl.get(soslcount), buf, COUNTOF(buf)), buf);
+      xml += "\"/>";
+    }
+    if (*mvt)
+    {
+      xml += "<maxVersionTested Id=\"";
+      xml += TtoCString(mvt);
+      xml += "\"/>";
     }
     xml += "</application></compatibility>";
   }
@@ -165,7 +178,7 @@ string generate(flags featureflags, comctl comctl_selection, exec_level exec_lev
   if (dpiaware_notset != dpia)
   {
     xml_aws += "<dpiAware xmlns=\"http://schemas.microsoft.com/SMI/2005/WindowsSettings\">";
-    xml_aws += dpia >= dpiaware_permonitor ? "True/PM" : dpiaware_false != dpia ? "true" : "false";
+    xml_aws += dpia == dpiaware_explorer ? "Explorer" : dpia >= dpiaware_permonitor ? "True/PM" : dpiaware_false != dpia ? "true" : "false";
     xml_aws += "</dpiAware>";
   }
   if (*dpia2)
@@ -173,6 +186,12 @@ string generate(flags featureflags, comctl comctl_selection, exec_level exec_lev
     xml_aws += "<dpiAwareness xmlns=\"http://schemas.microsoft.com/SMI/2016/WindowsSettings\">";
     xml_aws += TtoCString(dpia2);
     xml_aws += "</dpiAwareness>";
+  }
+  if (lpaware_notset != lpa)
+  {
+    xml_aws += "<longPathAware xmlns=\"http://schemas.microsoft.com/SMI/2016/WindowsSettings\">";
+    xml_aws += lpaware_false != lpa ? "true" : "false"; 
+    xml_aws += "</longPathAware>";
   }
   if (!xml_aws.empty())
   {

@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 2002-2018 Amir Szekely <kichik@netvision.net.il> and Contributors
+ * Copyright (C) 2002-2019 Amir Szekely <kichik@netvision.net.il> and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -123,14 +123,17 @@ public:
 #endif
   void  MoveAll(short x, short y);
   void  Resize(short x, short y);
-#ifdef _WIN32
   void  PixelsToDlgUnits(short& x, short& y);
-  void  PixelsToDlgUnits(SIZE& siz);
   void  DlgUnitsToPixels(short& x, short& y);
+#ifdef _WIN32
+  static inline bool SupportsDialogUnitComputation() { return true; }
+  void  PixelsToDlgUnits(SIZE& siz);
   SIZE  GetStringSize(WORD id, TCHAR *str);
   void  RTrimToString(WORD id, TCHAR *str, int margins);
   void  LTrimToString(WORD id, TCHAR *str, int margins);
   void  CTrimToString(WORD id, TCHAR *str, int margins);
+#else
+  static inline bool SupportsDialogUnitComputation() { return false; }
 #endif
   void  ConvertToRTL();
   BYTE* Save(DWORD& dwSize);

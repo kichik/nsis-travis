@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -266,7 +266,7 @@ bool Plugins::IsPluginCallSyntax(const tstring& token)
 struct PrintPluginDirsHelper {
   template<class C> static void print(const C&c, const char*indent = "")
   {
-    std::/*unordered_*/set<typename STLHelpers::mapped_type_helper<C>::type
+    std::/*unordered_*/set<NSIS_CXX_TYPENAME STL::mapped_type<C>::type
 #ifdef _WIN32
       , Plugins::strnocasecmp
 #endif

@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,6 +95,7 @@ typedef enum {
   DW_PP_DELFILE_NOMATCH = DW_PP_DELFILE_DELERROR,
   DW_PP_VERBOSE_POP_EMPTY_STACK = 6150,
   //DW_PP_VERBOSE_BAD_LEVEL = 6151?, // 2.x failed to issue a warning. 3.x currently aborts with hard error.
+  DW_PP_UNDEF_UNDEFINED = 6155,
   DW_INCLUDE_NONFATAL_NOT_FOUND = 7000, // reserved ..7009
   DW_FILE_NONFATAL_NOT_FOUND = 7010, // reserved ..7019
   DW_LANGSTRING_OVERLONGLENGTH = 7020, // reserved ..7024
@@ -107,6 +108,7 @@ typedef enum {
   DW_ATTRIBUTE_OVERLONGSTRING = 7060,
   DW_PARSE_BADNUMBER = 7070,
   DW_PARSE_LNK_HK = 7075,
+  DW_GENERIC_DEPRECATED = 7998,
   DW_PARSE_REGPATHPREFIX = 7999,
   DW_INSTFILESPAGE_NOT_USED = 8000, // reserved ..8019
   DW_COMP_FINAL = 8020, // reserved ..8059
@@ -169,14 +171,13 @@ namespace MakensisAPI {
 #define FLAG_OFFSET(flag) (FIELD_OFFSET(exec_flags_t, flag)/sizeof(int))
 
 class DiagState {
-  template<class M> struct mapped_type_helper { typedef typename STLHelpers::mapped_type_helper<M>::type type; };
   template<class C, class K, class V> void insert_or_assign(C&c, const K&k, V val)
   {
     typename C::value_type item(k, val);
     std::pair<NSIS_CXX_TYPENAME C::iterator, bool> ret = c.insert(item);
     if (!ret.second) ret.first->second = val;
   }
-  template<class C, class K> typename mapped_type_helper<C>::type get_paired_value(const C&c, const K&k, typename mapped_type_helper<C>::type defval) const
+  template<class C, class K> typename STL::mapped_type<C>::type get_paired_value(const C&c, const K&k, typename STL::mapped_type<C>::type defval) const
   {
     typename C::const_iterator it = c.find(k);
     return c.end() == it ? defval : it->second;
@@ -441,6 +442,7 @@ class CEXEBuild {
     void print_warnings();
     void warninghelper(DIAGCODE dc, bool fl, const TCHAR *fmt, va_list args);
     DiagState diagstate;
+    bool changed_target;
 
     /** Are we defining an uninstall version of the code?
      * @param un Use like a boolean to define whether in uninstall mode.
@@ -506,7 +508,7 @@ class CEXEBuild {
      * a PS_ERROR.  If this function call is overwriting a set user string,
      * this will return a PS_WARNING.
      */
-    int SetInnerString(int id, TCHAR *str);
+    int SetInnerString(int id, const TCHAR *str);
 
     int GenerateLangTable(LanguageTable *lt, int num_lang_tables);
     int GenerateLangTables();
@@ -583,7 +585,10 @@ class CEXEBuild {
       struct postbuild_cmd*next;
       int cmpop, cmpval;
       TCHAR cmd[1];
+      void delete_all();
+      static postbuild_cmd* make(const TCHAR *cmdstr, int cmpop, int cmpval);
     } *postbuild_cmds;
+    int run_postbuild_cmds(const postbuild_cmd *cmds, const TCHAR *templatearg_pc1, const TCHAR* commandname);
     int check_external_exitcode(int exitcode, int op, int val);
 
     TCHAR build_packname[1024], build_packcmd[1024];
@@ -678,7 +683,9 @@ class CEXEBuild {
     manifest::exec_level manifest_exec_level;
     manifest::dpiaware manifest_dpiaware;
     tstring manifest_dpiawareness;
+    manifest::longpathaware manifest_lpaware;
     manifest::SupportedOSList manifest_sosl;
+    tstring manifest_maxversiontested;
 
     CResourceEditor *res_editor;
     void init_res_editor();

@@ -10,13 +10,13 @@ The commands below all adjust attributes of the installer. These attributes cont
 
 \c (left|right|top|bottom) (width|height) [padding]
 
-Adds a branding image on the top, bottom, left, or right of the installer. Its size will be set according to the width/height specified, the installer width/height and the installers font. The final size will not always be what you requested; have a look at the output of the command for the actual size. Because this depends on the installers font, you should use \R{asetfont}{SetFont} before \R{aaddbrandingimage}{AddBrandingImage}. The default padding value is 2.
+Adds a branding image on the top, bottom, left, or right of the installer. Its size will be set according to the width/height specified, the installer width/height and the installers font. The final size will not always be what you requested; have a look at the output of the command for the actual size. Because this depends on the installers font, you should use \R{asetfont}{SetFont} before AddBrandingImage. The default padding value is 2. The numbers can be suffixed with \c{u} to specify dialog units instead of pixels.
 
-\R{aaddbrandingimage}{AddBrandingImage} only adds a placeholder for an image. To set the image itself at runtime, use \R{setbrandingimage}{SetBrandingImage}.
+AddBrandingImage only adds a placeholder for an image. To set the image itself at runtime, use \R{setbrandingimage}{SetBrandingImage}.
 
 \c AddBrandingImage left 100
 \c AddBrandingImage right 50
-\c AddBrandingImage top 20
+\c AddBrandingImage top 20u 3u
 \c AddBrandingImage bottom 35
 \c AddBrandingImage left 100 5
 
@@ -230,11 +230,13 @@ Valid values for flag are "smooth" (smooth the progress bar) or "colored" (color
 
 \S2{ainsttype} InstType
 
-\c install_type_name | /NOCUSTOM | /CUSTOMSTRING=str | /COMPONENTSONLYONCUSTOM
+\c install_type_name [index_output] | /NOCUSTOM | /CUSTOMSTRING=str | /COMPONENTSONLYONCUSTOM
 
-Adds an install type to the install type list, or disables the custom install type. There can be as many as 32 types, each one specifying the name of the install type. If the name is prefixed with 'un.' it is an uninstaller install type. The name can contain variables which will be processed at runtime before the components page shows. Another way of changing the \R{ainsttype}{InstType} name during runtime is the \R{sinsttypesettext}{InstTypeSetText} command. The difference is that with \R{sinsttypesettext}{InstTypeSetText} you are saving your precious user variables. The first type is the default (generally 'Typical'). If the /NOCUSTOM switch is specified, then the "custom" install type is disabled, and the user has to choose one of the pre-defined install types. Alternatively, if the /CUSTOMSTRING switch is specified, the parameter will override the "Custom" install type text. Alternatively, if the /COMPONENTSONLYONCUSTOM flag is specified, the component list will only be shown if the "Custom" install type is selected.
+Adds an install type to the install type list, or disables the custom install type. There can be as many as \#{NSIS_MAX_INST_TYPES}32 types, each one specifying the name of the install type. If the name is prefixed with 'un.' it is an uninstaller install type. The name can contain variables which will be processed at runtime before the components page shows. Another way of changing the \R{ainsttype}{InstType} name during runtime is the \R{sinsttypesettext}{InstTypeSetText} command. The difference is that with \R{sinsttypesettext}{InstTypeSetText} you are saving your precious user variables. The first type is the default (generally 'Typical' or 'Full'). If the /NOCUSTOM switch is specified, then the "custom" install type is disabled, and the user has to choose one of the pre-defined install types. Alternatively, if the /CUSTOMSTRING switch is specified, the parameter will override the "Custom" install type text. Alternatively, if the /COMPONENTSONLYONCUSTOM flag is specified, the component list will only be shown if the "Custom" install type is selected.
 
 Accepts variables for type names. If variables are used, they must be initialized before the components page is created.
+
+\R{ssectioninsttype}{SectionInstType} is used to bind \cw{Section}s to install types.
 
 \S2{alicensebkcolor} LicenseBkColor
 
@@ -285,13 +287,31 @@ Accepts variables. If variables are used, they must be initialized before the li
 
 \c \\<b\\>notset\\</b\\>|true|false
 
-\# Note: PerMonitor is not documented because it is not fully supported yet, we need to handle WM_DPICHANGED
+\# Note: true==System. PerMonitor is not documented because it is not fully supported yet, we need to handle WM_DPICHANGED.
 \# Example: ManifestDPIAware System ; System DPI on Vista/7/8/8.1/10(<10.1607(AU))
 \# Example: ManifestDPIAwareness "PerMonitorV2,System" ; PMv2 on 10.1703(CU)+, System on 10.1607(AU)
 
 Declare that the installer is DPI-aware. A DPI-aware application is not scaled by the DWM (DPI virtualization) so the text is never blurry. NSIS does not scale the bitmap used by the tree control on the component page and some plugins might have compatibility issues so make sure that you test your installer at different DPI settings if you select \e{true}.
 
 See \W{http://msdn.microsoft.com/en-us/library/dd464660}{MSDN} for more information about DPI-aware applications.
+
+\# \S2{amanifestdpiawareness} ManifestDPIAwareness
+\# 
+\# \c \\<b\\>notset\\</b\\>|comma_separated_string
+
+\S2{amanifestlongpathaware} ManifestLongPathAware
+
+\c \\<b\\>notset\\</b\\>|true|false
+
+Declare that the installer can handle paths longer than MAX_PATH. Only supported on Windows 10 Anniversary Update and later.
+
+\NsisWarnBlockContainerBegin
+\\<b\\>Note: \\</b\\> Instructions like CopyFiles and CreateShortcut do not support long paths!
+\NsisWarnBlockContainerEnd
+
+\NsisWarnBlockContainerBegin
+\\<b\\>Note: \\</b\\> Has no effect if the "Enable Win32 long paths" policy is not enabled.
+\NsisWarnBlockContainerEnd
 
 \S2{amanifestsupportedos} ManifestSupportedOS
 
@@ -300,6 +320,10 @@ See \W{http://msdn.microsoft.com/en-us/library/dd464660}{MSDN} for more informat
 Declare that the installer is compatible with the specified Windows version(s). This adds a SupportedOS entry in the compatibility section of the application manifest. The default is Win7+8+8.1+10. \e{none} is the default if \R{arequestexecutionlevel}{RequestExecutionLevel} is set to \e{none} for compatibility reasons.
 
 Windows 8.1 and later will fake its version number if you don't declare support for that particular version. You can read more about the other changes in behavior on \W{http://msdn.microsoft.com/en-us/library/windows/desktop/hh848036}{MSDN}.
+
+\# \S2{amanifestmaxversiontested} ManifestMaxVersionTested
+\# 
+\# \c maj.min.bld.rev
 
 \S2{amiscbuttontext} MiscButtonText
 
@@ -326,6 +350,24 @@ Accepts variables. If variables are used, they must be initialized in \R{oninit}
 \c [path\]install.exe
 
 Specifies the output file that the MakeNSIS should write the installer to. This is just the file that MakeNSIS writes, it doesn't affect the contents of the installer.
+
+\S2{apeaddresource} PEAddResource
+
+\c [/OVERWRITE|/REPLACE] file restype resname [reslang]
+
+Adds \cw{file} as a resource to the installer and uninstaller. \cw{restype} specifies the resource type and can be any string or # followed by a standard type or number. \cw{resname} must be # followed by a number. \cw{reslang} is optional and specifies the language id of the resource. Replacing standard NSIS resources is not supported, you should use \R{aicon}{Icon} and \R{achangeui}{ChangeUI} instead.
+
+\c PEAddResource "myimage.bmp" "#2" "#1337"
+\c PEAddResource "mybonus.ico" "#Icon" "#200"
+\c PEAddResource "myimage.png" "PNG" "#1234"
+
+\S2{aperemoveresource} PERemoveResource
+
+\c [/NOERRORS] restype resname reslang|ALL
+
+Removes a resource added with \cw{PEAddResource}.
+
+\c PERemoveResource "#Icon" "#200" ALL
 
 \S2{arequestexecutionlevel} RequestExecutionLevel
 

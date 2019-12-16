@@ -23,7 +23,10 @@ void __declspec(dllexport) GetName(HWND hwndParent, int string_size,
     stack_t *th;
     if (!g_stacktop) return;
     th = (stack_t*) GlobalAlloc(GPTR, sizeof(stack_t) + g_stringsize*sizeof(TCHAR));
-    GetUserName(th->text, &dwStringSize);
+    if (!GetUserName(th->text, &dwStringSize)) // Fails with ERROR_NOT_LOGGED_ON on Win9x if you cancel the logon dialog.
+    {
+      *th->text = _T('\0');
+    }
     th->next = *g_stacktop;
     *g_stacktop = th;
   }
@@ -35,13 +38,7 @@ struct group
  TCHAR *name;
 };
 
-// Jim Park: Moved this array from inside the func to the outside.  While it
-// was probably "safe" for this array to be inside because the strings are in
-// the .data section and so the pointer to the string returned is probably
-// safe, this is a bad practice to have as that's making an assumption on what
-// the compiler will do.  Besides which, other types of data returned would
-// actually fail as the local vars would be popped off the stack.
-struct group groups[] = 
+static const struct group groups[] = 
 {
  {DOMAIN_ALIAS_RID_USERS, _T("User")},
  // every user belongs to the users group, hence users come before guests

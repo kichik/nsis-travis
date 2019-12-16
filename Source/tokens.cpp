@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -121,7 +121,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_INSTCOLORS,_T("InstallColors"),1,1,_T("(/windows | (foreground_color background_color))"),TP_GLOBAL},
 {TOK_INSTDIR,_T("InstallDir"),1,0,_T("default_install_directory"),TP_GLOBAL},
 {TOK_INSTPROGRESSFLAGS,_T("InstProgressFlags"),0,-1,_T("[flag [...]]\n    flag={smooth|colored}"),TP_GLOBAL},
-{TOK_INSTTYPE,_T("InstType"),1,0,_T("[un.]install_type_name | /NOCUSTOM | /CUSTOMSTRING=str | /COMPONENTSONLYONCUSTOM"),TP_GLOBAL},
+{TOK_INSTTYPE,_T("InstType"),1,1,_T("[un.]install_type_name [index_output] | /NOCUSTOM | /CUSTOMSTRING=str | /COMPONENTSONLYONCUSTOM"),TP_GLOBAL},
 {TOK_INTOP,_T("IntOp"),3,1,_T("$(user_var: result) val1 OP [val2]\n    OP=(+ - * / % | & ^ ~ ! || && << >> >>>)"),TP_CODE},
 {TOK_INTPTROP,_T("IntPtrOp"),3,1,_T("$(user_var: result) val1 OP [val2]"),TP_CODE},
 {TOK_INTCMP,_T("IntCmp"),3,2,_T("val1 val2 jump_if_equal [jump_if_val1_less] [jump_if_val1_more]"),TP_CODE},
@@ -171,6 +171,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_RMDIR,_T("RMDir"),1,2,_T("[/r] [/REBOOTOK] directory_name"),TP_CODE},
 {TOK_SECTION,_T("Section"),0,3,_T("[/o] [-][un.][section_name] [section index output]"),TP_GLOBAL},
 {TOK_SECTIONEND,_T("SectionEnd"),0,0,_T(""),TP_SEC},
+{TOK_SECTIONINSTTYPE,_T("SectionInstType"),1,-1,_T("InstTypeIdx [InstTypeIdx [...]]"),TP_SEC},
 {TOK_SECTIONIN,_T("SectionIn"),1,-1,_T("InstTypeIdx [InstTypeIdx [...]]"),TP_SEC},
 {TOK_SUBSECTION,_T("SubSection"),1,2,_T("deprecated - use SectionGroup"),TP_GLOBAL},
 {TOK_SECTIONGROUP,_T("SectionGroup"),1,2,_T("[/e] [un.]section_group_name [section index output]"),TP_GLOBAL},
@@ -193,6 +194,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_SETAUTOCLOSE,_T("SetAutoClose"),1,0,_T("(false|true)"),TP_CODE},
 {TOK_SETCTLCOLORS,_T("SetCtlColors"),2,2,_T("hwnd [/BRANDING] [text_color] [transparent|bg_color]"),TP_CODE},
 {TOK_SETBRANDINGIMAGE,_T("SetBrandingImage"),1,2,_T("[/IMGID=image_item_id_in_dialog] [/RESIZETOFIT] bitmap.bmp"),TP_CODE},
+{TOK_LOADANDSETIMAGE,_T("LoadAndSetImage"),4,4,_T("[/EXERESOURCE] [/STRINGID] [/RESIZETOFIT[WIDTH|HEIGHT]] ctrl imagetype lrflags image"),TP_CODE},
 {TOK_SETCOMPRESS,_T("SetCompress"),1,0,_T("(off|auto|force)"),TP_ALL},
 {TOK_SETCOMPRESSOR,_T("SetCompressor"),1,2,_T("[/FINAL] [/SOLID] (zlib|bzip2|lzma)"),TP_GLOBAL},
 {TOK_SETCOMPRESSORDICTSIZE,_T("SetCompressorDictSize"),1,0,_T("dict_size_mb"),TP_ALL},
@@ -249,13 +251,17 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_WRITEREGEXPANDSTR,_T("WriteRegExpandStr"),4,0,_T("rootkey subkey entry_name new_value_string\n    root_key=(HKCR[32|64]|HKLM[32|64]|HKCU[32|64]|HKU|HKCC|HKDD|HKPD|SHCTX)"),TP_CODE},
 {TOK_WRITEREGNONE,_T("WriteRegNone"),3,1,_T("rootkey subkey entry_name [hex_data]"),TP_CODE},
 {TOK_WRITEUNINSTALLER,_T("WriteUninstaller"),1,0,_T("uninstall_exe_name"),TP_CODE},
+{TOK_PEADDRESOURCE,_T("PEAddResource"),3,2,_T("[/OVERWRITE|/REPLACE] file restype resname [reslang]"),TP_GLOBAL},
+{TOK_PEREMOVERESOURCE,_T("PERemoveResource"),3,1,_T("[/NOERRORS] restype resname reslang|ALL"),TP_GLOBAL},
 {TOK_PEDLLCHARACTERISTICS,_T("PEDllCharacteristics"),2,0,_T("addbits removebits"),TP_GLOBAL},
 {TOK_PESUBSYSVER,_T("PESubsysVer"),1,0,_T("major.minor"),TP_GLOBAL},
 {TOK_XPSTYLE,_T("XPStyle"),1,0,_T("(on|off)"),TP_GLOBAL},
 {TOK_REQEXECLEVEL,_T("RequestExecutionLevel"),1,0,_T("none|user|highest|admin"),TP_GLOBAL},
 {TOK_MANIFEST_DPIAWARE,_T("ManifestDPIAware"),1,0,_T("notset|true|false"),TP_GLOBAL},
 {TOK_MANIFEST_DPIAWARENESS,_T("ManifestDPIAwareness"),1,0,_T("comma_separated_string"),TP_GLOBAL},
+{TOK_MANIFEST_LPAWARE,_T("ManifestLongPathAware"),1,0,_T("notset|true|false"),TP_GLOBAL},
 {TOK_MANIFEST_SUPPORTEDOS,_T("ManifestSupportedOS"),1,-1,_T("none|all|WinVista|Win7|Win8|Win8.1|Win10|{GUID} [...]"),TP_GLOBAL},
+{TOK_MANIFEST_MAXVERSIONTESTED,_T("ManifestMaxVersionTested"),1,0,_T("maj.min.bld.rev"),TP_GLOBAL},
 {TOK_MANIFEST_DISABLEWINDOWFILTERING,_T("ManifestDisableWindowFiltering"),1,0,_T("notset|true"),TP_GLOBAL},
 {TOK_MANIFEST_GDISCALING,_T("ManifestGdiScaling"),1,0,_T("notset|true"),TP_GLOBAL},
 {TOK_P_PACKEXEHEADER,_T("!packhdr"),2,0,_T("temp_file_name command_line_to_compress_that_temp_file"),TP_ALL},
@@ -271,7 +277,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_P_IFNDEF,_T("!ifndef"),1,-1,_T("symbol [| symbol2 [& symbol3 [...]]]"),TP_ALL},
 {TOK_P_ENDIF,_T("!endif"),0,0,_T(""),TP_ALL},
 {TOK_P_DEFINE,_T("!define"),1,5,_T("[/ifndef | /redef] ([/date|/utcdate] symbol [value]) | (/file symbol filename) | (/math symbol val1 OP val2)\n    OP=(+ - * / % << >> >>> & | ^ ~ ! && ||)"),TP_ALL},
-{TOK_P_UNDEF,_T("!undef"),1,0,_T("symbol"),TP_ALL},
+{TOK_P_UNDEF,_T("!undef"),1,-1,_T("[/noerrors] symbol [...]"),TP_ALL},
 {TOK_P_ELSE,_T("!else"),0,-1,_T("[if[macro][n][def] ...]"),TP_ALL},
 {TOK_P_ECHO,_T("!echo"),1,0,_T("message"),TP_ALL},
 {TOK_P_WARNING,_T("!warning"),0,1,_T("[warning_message]"),TP_ALL},

@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -149,12 +149,14 @@ typedef DWORDLONG ULONGLONG,*PULONGLONG;
 # define FIX_ENDIAN_INT32(x) (x)
 # define FIX_ENDIAN_INT16_INPLACE(x) ((void)(x))
 # define FIX_ENDIAN_INT16(x) (x)
+# define BE2HE32(x) SWAP_ENDIAN_INT32(x)
 #else
 # define FIX_ENDIAN_INT64(x) SWAP_ENDIAN_INT64(x)
 # define FIX_ENDIAN_INT32_INPLACE(x) ((x) = SWAP_ENDIAN_INT32(x))
 # define FIX_ENDIAN_INT32(x) SWAP_ENDIAN_INT32(x)
 # define FIX_ENDIAN_INT16_INPLACE(x) ((x) = SWAP_ENDIAN_INT16(x))
 # define FIX_ENDIAN_INT16(x) SWAP_ENDIAN_INT16(x)
+# define BE2HE32(x) (x)
 #endif
 #define SWAP_ENDIAN_INT64(x) ( \
   (((x)&0xFF00000000000000) >> 56) | \
@@ -224,13 +226,17 @@ typedef DWORDLONG ULONGLONG,*PULONGLONG;
 #    define FIELD_OFFSET(t,f) ((UINT_PTR)&(((t*)0)->f))
 #  endif
 #  ifndef MAKEINTRESOURCEA
-#    define MAKEINTRESOURCEA(i) ((LPSTR)((ULONG_PTR)((WORD)(i))))
+#    define MAKEINTRESOURCEA(i) ((LPSTR)((ULONG_PTR)((WORD)(ULONG_PTR)(i))))
 #  endif
 #  ifndef MAKEINTRESOURCEW
-#    define MAKEINTRESOURCEW(i) ((LPWSTR)((ULONG_PTR)((WORD)(i))))
+#    define MAKEINTRESOURCEW(i) ((LPWSTR)((ULONG_PTR)((WORD)(ULONG_PTR)(i))))
 #  endif
 #  ifndef MAKEINTRESOURCE
-#    define MAKEINTRESOURCE MAKEINTRESOURCEA
+#    ifdef _UNICODE
+#      define MAKEINTRESOURCE MAKEINTRESOURCEW
+#    else
+#      define MAKEINTRESOURCE MAKEINTRESOURCEA
+#    endif
 #  endif
 #  ifndef IMAGE_FIRST_SECTION
 #    define IMAGE_FIRST_SECTION(h) ( PIMAGE_SECTION_HEADER( (ULONG_PTR) h + \
@@ -520,6 +526,10 @@ typedef DWORDLONG ULONGLONG,*PULONGLONG;
 
 // resources
 
+#ifndef RT_CURSOR
+#  define RT_CURSOR MAKEINTRESOURCE(1)
+#  define RT_GROUP_CURSOR MAKEINTRESOURCE(1 + 11)
+#endif
 #ifndef RT_BITMAP
 #  define RT_BITMAP MAKEINTRESOURCE(2)
 #endif
@@ -530,7 +540,7 @@ typedef DWORDLONG ULONGLONG,*PULONGLONG;
 #  define RT_DIALOG MAKEINTRESOURCE(5)
 #endif
 #ifndef RT_GROUP_ICON
-#  define RT_GROUP_ICON MAKEINTRESOURCE(14)
+#  define RT_GROUP_ICON MAKEINTRESOURCE(3 + 11)
 #endif
 #ifndef RT_VERSION
 #  define RT_VERSION MAKEINTRESOURCE(16)
@@ -1097,9 +1107,9 @@ FORCEINLINE BOOL NoDepr_GetVersionExW(OSVERSIONINFOW*p) { __pragma(warning(push)
 
 
 #ifdef __cplusplus
-namespace STLHelpers 
+namespace STL
 {
-  template<class M> struct mapped_type_helper { typedef typename M::value_type::second_type type; }; // VC6 uses referent_type and not mapped_type
+  template<class M> struct mapped_type { typedef typename M::value_type::second_type type; }; // VC6 uses referent_type and not mapped_type
 }
 #endif //~ __cplusplus
 

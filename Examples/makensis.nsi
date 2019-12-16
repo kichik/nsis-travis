@@ -166,10 +166,15 @@ ${MementoSection} "NSIS Core Files (required)" SecCore
   File ..\COPYING
   File ..\NSIS.chm
   !pragma verifychm "..\NSIS.chm"
-  File ..\NSIS.exe
-  !if /FileExists "..\NSIS.exe.manifest"
-    File "..\NSIS.exe.manifest"
+  !if /FileExists "..\NSIS.exe"
+    !if /FileExists "..\NSIS.exe.manifest"
+      File "..\NSIS.exe.manifest"
+    !endif
+  !else
+    !define NO_NSISMENU_HTML 1
+    !makensis '-v2 "NSISMenu.nsi" "-XOutFile ..\NSIS.exe"' = 0
   !endif
+  File ..\NSIS.exe
 
   SetOutPath $INSTDIR\Bin
   File ..\Bin\makensis.exe
@@ -227,12 +232,14 @@ ${MementoSection} "NSIS Core Files (required)" SecCore
   SetOutPath $INSTDIR\Docs\makensisw
   File ..\Docs\makensisw\*.txt
 
-  SetOutPath $INSTDIR\Menu
-  File ..\Menu\*.html
-  SetOutPath $INSTDIR\Menu\images
-  File ..\Menu\images\header.gif
-  File ..\Menu\images\line.gif
-  File ..\Menu\images\site.gif
+  !ifndef NO_NSISMENU_HTML
+    SetOutPath $INSTDIR\Menu
+    File ..\Menu\*.html
+    SetOutPath $INSTDIR\Menu\images
+    File ..\Menu\images\header.gif
+    File ..\Menu\images\line.gif
+    File ..\Menu\images\site.gif
+  !endif
 
   Delete $INSTDIR\makensis.htm
   Delete $INSTDIR\Docs\*.html
@@ -240,7 +247,6 @@ ${MementoSection} "NSIS Core Files (required)" SecCore
   RMDir $INSTDIR\Docs
 
   SetOutPath $INSTDIR\Bin
-  File ..\Bin\LibraryLocal.exe
   !if ${BITS} >= 64
     File /NonFatal  ..\Bin\RegTool-x86.bin
     File            ..\Bin\RegTool-amd64.bin
@@ -330,6 +336,7 @@ ${MementoSection} "Script Examples" SecExample
   File ..\Examples\WordFuncTest.nsi
   File ..\Examples\Memento.nsi
   File ..\Examples\unicode.nsi
+  File ..\Examples\NSISMenu.nsi
 
   SetOutPath $INSTDIR\Examples\Plugin
   File ..\Examples\Plugin\exdll.c

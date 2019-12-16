@@ -268,6 +268,10 @@ Header file for creating custom installer pages with nsDialogs
 !define __NSD_Text_STYLE ${DEFAULT_STYLES}|${WS_TABSTOP}|${ES_AUTOHSCROLL}
 !define __NSD_Text_EXSTYLE ${WS_EX_WINDOWEDGE}|${WS_EX_CLIENTEDGE}
 
+!define __NSD_MLText_CLASS EDIT
+!define __NSD_MLText_STYLE ${DEFAULT_STYLES}|${WS_TABSTOP}|${ES_AUTOHSCROLL}|${ES_AUTOVSCROLL}|${ES_MULTILINE}|${ES_WANTRETURN}|${WS_HSCROLL}|${WS_VSCROLL}
+!define __NSD_MLText_EXSTYLE ${WS_EX_WINDOWEDGE}|${WS_EX_CLIENTEDGE}
+
 !define __NSD_Password_CLASS EDIT
 !define __NSD_Password_STYLE ${DEFAULT_STYLES}|${WS_TABSTOP}|${ES_AUTOHSCROLL}|${ES_PASSWORD}
 !define __NSD_Password_EXSTYLE ${WS_EX_WINDOWEDGE}|${WS_EX_CLIENTEDGE}
@@ -360,6 +364,7 @@ Header file for creating custom installer pages with nsDialogs
 !insertmacro __NSD_DefineControl CheckBox
 !insertmacro __NSD_DefineControl RadioButton
 !insertmacro __NSD_DefineControl Text
+!insertmacro __NSD_DefineControl MLText
 !insertmacro __NSD_DefineControl Password
 !insertmacro __NSD_DefineControl Number
 !insertmacro __NSD_DefineControl FileRequest
@@ -412,6 +417,13 @@ Header file for creating custom installer pages with nsDialogs
 !insertmacro __NSD_DefineControlCallback Change
 !insertmacro __NSD_DefineControlCallback Notify
 !insertmacro __NSD_DefineDialogCallback Back
+
+!define NSD_Return "!insertmacro NSD_Return "
+!macro NSD_Return val
+StrCpy $_OUTDIR ${val}
+SetSilent silent
+Return
+!macroend
 
 
 !define __NSD_MkCtlCmd "!insertmacro __NSD_MkCtlCmd "
@@ -474,6 +486,15 @@ System::Call 'COMCTL32::InitCommonControlsEx(*ls)' ; INITCOMMONCONTROLSEX as UIN
 	System::Call "user32::SetWindowLong(p${HWND},p${GWL},ps)"
 !macroend
 
+!define NSD_RemoveStyle "!insertmacro _NSD_GWLRemoveFlags ${GWL_STYLE} " 
+!define NSD_RemoveExStyle "!insertmacro _NSD_GWLRemoveFlags ${GWL_EXSTYLE} "
+!macro _NSD_GWLRemoveFlags GWL HWND DATA
+System::Call "user32::GetWindowLong(p${HWND},i${GWL})p.s"
+System::Int64Op "${DATA}" ~ & ; Perform ~ and prepare the stack for &
+System::Int64Op ; Perform &
+System::Call "user32::SetWindowLong(p${HWND},i${GWL},ps)"
+!macroend 
+
 !define NSD_GetStyle "!insertmacro _NSD_GWLGetFlags ${GWL_STYLE} "
 !define NSD_GetExStyle "!insertmacro _NSD_GWLGetFlags ${GWL_EXSTYLE} "
 !macro _NSD_GWLGetFlags GWL HWND RET
@@ -518,6 +539,7 @@ IntOp ${RET} ${RET} & ${BIT}
 !define NSD_Edit_EmptyUndoBuffer `${__NSD_MkCtlCmd} EM_EMPTYUNDOBUFFER 0 0 `
 !define NSD_Edit_CanUndo `${__NSD_MkCtlCmd_RV} EM_CANUNDO 0 0 `
 !define NSD_Edit_ScrollCaret `${__NSD_MkCtlCmd} EM_SCROLLCARET 0 0 `
+!define NSD_Edit_LineScroll `${__NSD_MkCtlCmd_WPLP} EM_LINESCROLL `
 !define NSD_Edit_SetSel `${__NSD_MkCtlCmd_WPLP} EM_SETSEL ` ; WP:Start LP:End
 
 !define NSD_Edit_SetCueBannerText "!insertmacro __NSD_Edit_SetCueBannerText " ; CC6+
@@ -527,6 +549,16 @@ IntOp ${RET} ${RET} & ${BIT}
 !else
 	System::Call 'USER32::SendMessage(p${CONTROL},i${EM_SETCUEBANNER},p${SHOWWHENFOCUSED},ws)' `${TEXT}` ; Must be PWSTR
 !endif
+!macroend
+
+!define NSD_Edit_GetLineCount `${__NSD_MkCtlCmd_RV} EM_GETLINECOUNT 0 0 `
+!define NSD_Edit_GetLine "!insertmacro __NSD_Edit_GetLine "
+!macro __NSD_Edit_GetLine CONTROL LINEINDEX OUTPUT
+	System::Call '*(&i2 ${NSIS_MAX_STRLEN},&t${NSIS_MAX_STRLEN})p.s'
+	System::Call 'USER32::SendMessage(p${CONTROL},i${EM_GETLINE},p${LINEINDEX},pss)'
+	System::Call 'KERNEL32::lstrcpyn(t.s,pss,i${NSIS_MAX_STRLEN})'
+	Pop ${OUTPUT}
+	System::Free
 !macroend
 
 !define NSD_SetTextLimit `${NSD_Edit_SetTextLimit} ` ; Legacy alias
@@ -613,15 +645,11 @@ SendMessage ${CONTROL} ${CB_INSERTSTRING} -1 `STR:${STRING}`
 
 
 !define NSD_CB_GetItemData `!insertmacro __NSD_CB_GetItemData `
-!macro NSD_CB_GetItemData CONTROL INDEX VAR
+!macro __NSD_CB_GetItemData CONTROL INDEX VAR
 SendMessage ${CONTROL} ${CB_GETITEMDATA} ${INDEX} 0 ${VAR}
 !macroend
+!define NSD_CB_SetItemData `${__NSD_MkCtlCmd_WPLP} CB_SETITEMDATA ` ; Index Data
 
-
-!define NSD_CB_SetItemData `!insertmacro __NSD_CB_SetItemData `
-!macro NSD_CB_SetItemData CONTROL INDEX DATA
-SendMessage ${CONTROL} ${CB_SETITEMDATA} ${INDEX} ${DATA}
-!macroend
 
 !define NSD_CB_DelItem `${__NSD_MkCtlCmd_WP} CB_DELETESTRING 0 `
 !define NSD_CB_LimitText `${__NSD_MkCtlCmd_WP} CB_LIMITTEXT 0 `
@@ -717,15 +745,10 @@ SendMessage ${CONTROL} ${LB_INSERTSTRING} -1 `STR:${STRING}`
 
 
 !define NSD_LB_GetItemData `!insertmacro __NSD_LB_GetItemData `
-!macro NSD_LB_GetItemData CONTROL INDEX VAR
+!macro __NSD_LB_GetItemData CONTROL INDEX VAR
 SendMessage ${CONTROL} ${LB_GETITEMDATA} ${INDEX} 0 ${VAR}
 !macroend
-
-
-!define NSD_LB_SetItemData `!insertmacro __NSD_LB_SetItemData `
-!macro NSD_LB_SetItemData CONTROL INDEX DATA
-SendMessage ${CONTROL} ${LB_SETITEMDATA} ${INDEX} ${DATA}
-!macroend
+!define NSD_LB_SetItemData `${__NSD_MkCtlCmd_WPLP} LB_SETITEMDATA ` ; Index Data
 
 
 !define NSD_LB_FindStringPrefix `!insertmacro __NSD_LB_FindStringPrefix `

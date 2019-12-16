@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2018 Nullsoft and Contributors
+ * Copyright (C) 1999-2019 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ namespace manifest
 {
   enum flags
   {
-    disablewindowfiltering = 0x01, // Win8+
-    gdiscaling = 0x02, // Win10FU1703+
+    disablewindowfiltering = 0x01, // Win8+ (Allow EnumWindows() to return Windows 8 immersive apps)
+    gdiscaling = 0x02, // Win10FU1703+ blogs.windows.com/windowsdeveloper/2017/05/19/improving-high-dpi-experience-gdi-based-desktop-apps/
     flags_default = 0
   };
 
@@ -50,7 +50,15 @@ namespace manifest
     dpiaware_notset,
     dpiaware_false,
     dpiaware_true, // System DPI on Vista+
-    dpiaware_permonitor // System DPI on Vista/7/8, PerMonitor on 8.1+
+    dpiaware_permonitor, // System DPI on Vista/7/8, PerMonitor on 8.1+ (Undocumented because we don't handle WM_DPICHANGED)
+    dpiaware_explorer // Win8.1+? Undocumented?
+  };
+
+  enum longpathaware
+  {
+    lpaware_notset,
+    lpaware_false,
+    lpaware_true // Win10.0.14352+
   };
 
   class SupportedOSList // Win7+
@@ -86,7 +94,16 @@ namespace manifest
     }
   };
 
-  std::string generate(flags, comctl, exec_level, dpiaware, const TCHAR*, SupportedOSList&);
+  typedef struct {
+    flags Flags;
+    dpiaware DPIA;
+    const TCHAR *DPIA2; // Win10FU1607+
+    longpathaware lpaware;
+    SupportedOSList*pSOSL;
+    const TCHAR *MaxVersionTested; // Win10FU1903+ github.com/microsoft/AppConsult-WinAppsModernizationWorkshop/tree/master/Exercise2
+  } SPECIFICATION;
+
+  std::string generate(comctl, exec_level, const SPECIFICATION&);
 
 };
 
