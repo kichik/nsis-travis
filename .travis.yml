@@ -25,17 +25,19 @@ addons:
     update: true
 before_install:
 - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then choco install python; pip install scons; fi
-#- if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget http://dev-www.libreoffice.org/src/cppunit-1.14.0.tar.gz; tar xzf cppunit-1.14.0.tar.gz; pushd cppunit-1.14.0; ./autogen.sh; ./configure; make; make install; fi
-- if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe; ./cppunit-msvc-1.12.1.exe /S; fi
+# no make - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget -q http://dev-www.libreoffice.org/src/cppunit-1.14.0.tar.gz; tar xzf cppunit-1.14.0.tar.gz; pushd cppunit-1.14.0; ./autogen.sh; ./configure; make; make install; fi
+# freezes - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget -q https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe; ./cppunit-msvc-1.12.1.exe /S; fi
 - if [[ $TRAVIS_OS_NAME == 'osx' ]]; then brew install https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw; fi
 install:
-- wget -O /tmp/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
+- wget -qO /tmp/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
 - mkdir /tmp/zlib
 - unzip /tmp/zlib.zip -d /tmp/zlib
 script:
-- scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test dist-zip
+#- scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test dist-zip
+- scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test-scripts dist-zip
 env:
   global:
+  # https://travis-ci.community/t/windows-python-pip-module-not-found/5480/5
   - PATH=/c/Python38:/c/Python38/Scripts:$PATH
   jobs:
   - CFG_LOG=yes
