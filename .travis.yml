@@ -19,7 +19,6 @@ addons:
     dist: trusty
   homebrew:
     packages:
-    - "https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw"
     - scons
     - mingw-w64
     - zlib
@@ -27,6 +26,7 @@ addons:
 before_install:
 - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then choco install python; pip install scons; fi
 - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget http://dev-www.libreoffice.org/src/cppunit-1.14.0.tar.gz; tar xzf cppunit-1.14.0.tar.gz; pushd cppunit-1.14.0; ./autogen.sh; ./configure; make; make install; fi
+- if [[ $TRAVIS_OS_NAME == 'osx' ]]; then brew install https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw; fi
 install:
 - wget -O /tmp/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
 - mkdir /tmp/zlib
