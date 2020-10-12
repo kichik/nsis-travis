@@ -22,12 +22,14 @@ addons:
     - scons
     - mingw-w64
     - zlib
-    update: true
+    - cppunit
+    # SLOW
+    #update: true
 before_install:
 - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then choco install python; pip install scons; fi
 # no make - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget -q http://dev-www.libreoffice.org/src/cppunit-1.14.0.tar.gz; tar xzf cppunit-1.14.0.tar.gz; pushd cppunit-1.14.0; ./autogen.sh; ./configure; make; make install; fi
 # freezes - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget -q https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe; ./cppunit-msvc-1.12.1.exe /S; fi
-- if [[ $TRAVIS_OS_NAME == 'osx' ]]; then brew install cppunit; fi
+#- if [[ $TRAVIS_OS_NAME == 'osx' ]]; then brew install cppunit; fi
 install:
 - wget -qO /tmp/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
 - mkdir /tmp/zlib
