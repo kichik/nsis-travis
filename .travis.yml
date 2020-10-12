@@ -33,7 +33,7 @@ install:
 - mkdir /tmp/zlib
 - unzip /tmp/zlib.zip -d /tmp/zlib
 script:
-- set -o pipefail && scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test dist-zip | tee build.log
+- set -o pipefail && scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test dist-zip | tee build.log || cat config.log
 - echo skip for test
 env:
   global:
