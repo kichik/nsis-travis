@@ -8,6 +8,7 @@ jobs:
         run: |
           echo $Env:DEPLOY_KEY > $HOME/deploy_key
           ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -T kichik,nsis@shell.sourceforge.net create
-          Get-Content C:\windows\system32\notepad.exe -Raw | ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net /usr/bin/base64
+          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key C:\windows\system32\notepad.exe kichik,nsis@shell.sourceforge.net:/tmp/nsis.zip
+          ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net base64 /tmp/nsis.zip
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
