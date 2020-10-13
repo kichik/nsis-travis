@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2019 Nullsoft and Contributors
+ * Copyright (C) 1999-2020 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,7 +112,7 @@ enum
 #ifdef NSIS_CONFIG_ENHANCEDUI_SUPPORT
   EW_GETDLGITEM,        // GetDlgItem:        3: [outputvar, dialog, item_id]
   EW_SETCTLCOLORS,      // SerCtlColors:      3: [hwnd, pointer to struct colors]
-  EW_LOADANDSETIMAGE,   // SetBrandingImage/LoadAndSetImage: 3: [imgid ctl flags]
+  EW_LOADANDSETIMAGE,   // SetBrandingImage/LoadAndSetImage: 5: [ctrl imagetype lrflags imageid [output]]
   EW_CREATEFONT,        // CreateFont:        5: [handle output, face name, height, weight, flags]
   EW_SHOWWINDOW,        // ShowWindow:        2: [hwnd, show state]
 #endif
@@ -193,9 +193,8 @@ enum
                         // InstTypeGetFlags:  3: [idx, 1, output]
 #endif
 
-  // instructions not actually implemented in exehead, but used in compiler.
-  EW_GETLABELADDR,      // both of these get converted to EW_ASSIGNVAR
-  EW_GETFUNCTIONADDR,
+  EW_GETOSINFO,         // 1+ [operation, ...]
+  EW_RESERVEDOPCODE,    // Free slot, feel free to use it for something
 
 #ifdef NSIS_LOCKWINDOW_SUPPORT
   EW_LOCKWINDOW,
@@ -207,6 +206,10 @@ enum
   EW_FGETWS,            // FileReadUTF16LE: 4 [handle, output, maxlen, ?getchar:gets]
 #endif//NSIS_SUPPORT_FILEFUNCTIONS
 #endif
+
+  // Opcodes listed here are not actually used in exehead. No exehead opcodes should be present after these!
+  EW_GETLABELADDR,      // --> EW_ASSIGNVAR
+  EW_GETFUNCTIONADDR,   // --> EW_ASSIGNVAR
 };
 
 #pragma pack(push, 1) // fileform.cpp assumes no padding/alignment
@@ -547,8 +550,10 @@ typedef struct {
 #define HKLMANY MAKEREGROOTVIEW(HKEY_LOCAL_MACHINE, REGROOTVIEW32|REGROOTVIEW64)
 #define DELREG_VALUE 0 // TOK_DELETEREGVALUE
 #define DELREG_KEY 1 // TOK_DELETEREGKEY
-#define DELREGKEY_ONLYIFNOSUBKEYS 1 // Shifted and stored as 2 in the binary for compatibility with <= 3.1
-#define DELREGKEYFLAGSSHIFT 1 // parm4 is shifted so exehead can remove the DELREG_KEY bit
+#define DELREGKEY_ONLYIFNOSUBKEYS 0x01 // Note: Shifted (stored as 2 in the binary) for compatibility with <= v3.1
+#define DELREGKEY_ONLYIFNOVALUES  0x02
+//      DELREGKEY_SAMVIEWMASK     REGROOTVIEWTOSAMVIEW(REGROOTVIEW32|REGROOTVIEW64) // Reserved for KEY_WOW64_xxKEY, cannot be used as flags!
+#define DELREGKEYFLAGSSHIFT 1 // exehead removes the DELREG_KEY bit in parm4 by shifting. After shifting the bits are DELREGKEY_*.
 
 
 #ifdef NSIS_SUPPORT_CREATESHORTCUT

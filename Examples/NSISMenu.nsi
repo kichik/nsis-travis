@@ -13,13 +13,31 @@ InstallButtonText " "
 CompletedText " "
 LangString ^ClickInstall 0 " "
 Caption "$(^Name)"
-!ifdef VER_MAJOR & VER_MINOR & VER_REVISION & VER_BUILD
+
+!macro UNPACKVERFIELD out in shr mask fmt
+!define /redef /math ${out} ${in} >>> ${shr}
+!define /redef /math ${out} ${${out}} & ${mask}
+!define /redef /intfmt ${out} "${fmt}" ${${out}}
+!macroend
+
+!ifndef VER_MAJOR & VER_MINOR
+!ifdef NSIS_PACKEDVERSION
+!insertmacro UNPACKVERFIELD VER_MAJOR ${NSIS_PACKEDVERSION} 24 0x0ff "%X"
+!insertmacro UNPACKVERFIELD VER_MINOR ${NSIS_PACKEDVERSION} 12 0xfff "%X"
+!insertmacro UNPACKVERFIELD VER_REVISION ${NSIS_PACKEDVERSION} 4 255 "%X"
+!insertmacro UNPACKVERFIELD VER_BUILD ${NSIS_PACKEDVERSION} 00 0x00f "%X"
+!endif
+!endif
+!ifdef VER_MAJOR & VER_MINOR
+!define /ifndef VER_REVISION 0
+!define /ifndef VER_BUILD 0
 !searchreplace VERSTR "${NSIS_VERSION}" "v" ""
 VIProductVersion ${VER_MAJOR}.${VER_MINOR}.${VER_REVISION}.${VER_BUILD}
 VIAddVersionKey "ProductName" "NSIS"
 VIAddVersionKey "ProductVersion" "${VERSTR}"
 VIAddVersionKey "FileVersion" "${VERSTR}"
 VIAddVersionKey "FileDescription" "NSIS Menu"
+VIAddVersionKey "LegalCopyright" "http://nsis.sf.net/License"
 !endif
 
 !include nsDialogs.nsh
@@ -137,10 +155,14 @@ nsDialogs::CreateControl ${__NSD_Label_CLASS} ${__NSD_Label_STYLE} ${__NSD_Label
 Pop $0
 ${SetCtlColors} $0 0xffffff 0xffffff ${CB_HEADER}
 
-nsDialogs::CreateControl ${__NSD_Icon_CLASS} ${__NSD_Icon_STYLE}|${SS_CENTERIMAGE}|${SS_CENTER} ${__NSD_Icon_EXSTYLE} 0 0 33u ${UY_HEADER}u ""
+; CCv5 does not paint the background outside of the icon correctly when SS_CENTERIMAGE is used so we have to overlay a small icon on top of the background
+nsDialogs::CreateControl ${__NSD_Icon_CLASS} ${__NSD_Icon_STYLE} ${__NSD_Icon_EXSTYLE} 4u 4u 33u ${UY_HEADER}u ""
 Pop $0
 ${SetCtlColors} $0 "" "" ${CB_HEADER}
 ${NSD_SetIconFromInstaller} $0 $1
+nsDialogs::CreateControl ${__NSD_Icon_CLASS} ${__NSD_Icon_STYLE}|${SS_CENTERIMAGE}|${SS_CENTER} ${__NSD_Icon_EXSTYLE} 0 0 33u ${UY_HEADER}u ""
+Pop $0
+${SetCtlColors} $0 "" "" ${CB_HEADER}
 
 CreateFont $1 "Trebuchet MS" 17
 !searchreplace VERSTR "${NSIS_VERSION}" "v" ""
@@ -222,7 +244,7 @@ nsDialogs::CreateControl ${__NSD_Label_CLASS} ${__NSD_Label_STYLE}|${SS_CENTERIM
 Pop $0
 ${SetCtlColors} $0 ${CT_FOOTER} transparent transparent
 SendMessage $0 ${WM_SETFONT} ${HF_HEADER} 1
-nsDialogs::SetUserData $0 "http://nsis.sourceforge.net"
+nsDialogs::SetUserData $0 "https://nsis.sourceforge.io"
 ${NSD_OnClick} $0 OnLinkClick
 
 nsDialogs::Show

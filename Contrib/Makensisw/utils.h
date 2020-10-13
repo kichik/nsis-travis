@@ -32,6 +32,14 @@
 #endif
 #define COUNTOF(a) (sizeof(a)/sizeof(a[0]))
 
+#if defined(_MSC_VER) && _MSC_VER >= 1200
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+#define HINST_THISCOMPONENT ( (HINSTANCE) &__ImageBase )
+#define HINST_APPLICATION HINST_THISCOMPONENT
+#else
+#define HINST_APPLICATION ( (HINSTANCE) GetModuleHandle(NULL) )
+#endif
+
 #define MRU_LIST_SIZE 5
 #define MRU_DISPLAY_LENGTH 40
 #define SYMSETNAME_MAXLEN 40
@@ -64,6 +72,7 @@ void LogMessage(HWND hwnd,const TCHAR *str);
 void ErrorMessage(HWND hwnd,const TCHAR *str);
 void CenterOnParent(HWND hwnd);
 void SetDialogFocus(HWND hDlg, HWND hCtl); // Use this and not SetFocus()!
+#define DlgRet(hDlg, val) ( SetWindowLongPtr((hDlg), DWLP_MSGRESULT, (val)) | TRUE )
 HWND GetComboEdit(HWND hCB);
 #define DisableItems(hwnd) EnableDisableItems(hwnd, 0)
 #define EnableItems(hwnd) EnableDisableItems(hwnd, 1)
@@ -89,6 +98,18 @@ void PushMRUFile(TCHAR* fname);
 void BuildMRUMenus();
 void LoadMRUFile(int position);
 void ClearMRUList();
+
+struct FSPath {
+  template<class T> static inline bool IsAgnosticSeparator(const T c) { return '\\' == c || '/' == c; }
+  template<class T> static T* FindLastComponent(T*p) // Note: Returns "" for "dir\"
+  {
+    for (T *sep = 0, *start = p;; ++p)
+      if (!*p)
+        return sep ? ++sep : start;
+      else if (IsAgnosticSeparator(*p))
+        sep = p;
+  }
+};
 
 bool FileExists(const TCHAR *fname);
 bool OpenUrlInDefaultBrowser(HWND hwnd, LPCSTR Url);

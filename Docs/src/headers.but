@@ -1,5 +1,11 @@
 \A{headers} Useful Headers
 
+\b \R{tut-logic}{LogicLib} - Evalute various logic statements with helper macros.
+
+\b \R{modernui}{Modern User Interface} - A MSI inspired interface.
+
+\b \L{../Docs/MultiUser/Readme.html}{Multi-User} - Install for a single user or for all users on the computer.
+
 
 \H{filefunc} File Functions Header
 
@@ -257,7 +263,7 @@ Call functions:
 \c 	Push $0
 \c FunctionEnd
 
-\\<b\\>Example (Locate with banner - \W{http://nsis.sourceforge.net/Nxs_plug-in}{NxS plugin} required):\\</b\\>
+\\<b\\>Example (Locate with banner - \W{https://nsis.sourceforge.io/Nxs_plug-in}{NxS plugin} required):\\</b\\>
 
 \c Section
 \c 	nxs::Show /NOUNLOAD `$(^Name) Setup` /top \
@@ -833,7 +839,7 @@ Call functions:
 \c 	Push $0
 \c FunctionEnd
 
-\\<b\\>Example (\W{http://nsis.sourceforge.net/Nxs_plug-in}{NxS plugin}):\\</b\\>
+\\<b\\>Example (\W{https://nsis.sourceforge.io/Nxs_plug-in}{NxS plugin}):\\</b\\>
 
 \c !include "FileFunc.nsh"
 \c 
@@ -2376,17 +2382,17 @@ Call functions:
 \\<b\\>Example (Filter4):\\</b\\>
 
 \c Section
-\c 	${StrFilter} "123abcÀÁÂ 456DEFãäå 7890|%#" "+12rus" "ä" "ãå" $R0
-\c 	; $R0="123ÀÁÂ456ä7890"  ;only Digits + Letters + ä - ãå
+\c 	${StrFilter} "123abcÖ°Ö±Ö² 456DEF×“×”×• 7890|%#" "+12rus" "×”" "×“×•" $R0
+\c 	; $R0="123Ö°Ö±Ö²456×”7890"  ;only Digits + Letters + ×” - ×“×•
 \c SectionEnd
 
 \\<b\\>Example (English + Russian Letters):\\</b\\>
 
 \c Section
-\c 	${StrFilter} "123abcÀÁÂ 456DEFãäå 7890|%#" "2rus" "" "" $R0
-\c 	; $R0="ÀÁÂãäå"        ;only Russian Letters
-\c 	${StrFilter} "123abcÀÁÂ 456DEFãäå 7890|%#" "2" "$R0" "" $R0
-\c 	; $R0="abcÀÁÂDEFãäå"  ;only English + Russian Letters
+\c 	${StrFilter} "123abcÖ°Ö±Ö² 456DEF×“×”×• 7890|%#" "2rus" "" "" $R0
+\c 	; $R0="Ö°Ö±Ö²×“×”×•"        ;only Russian Letters
+\c 	${StrFilter} "123abcÖ°Ö±Ö² 456DEF×“×”×• 7890|%#" "2" "$R0" "" $R0
+\c 	; $R0="abcÖ°Ö±Ö²DEF×“×”×•"  ;only English + Russian Letters
 \c SectionEnd
 
 \\<b\\>Example (Word Capitalize):\\</b\\>

@@ -29,9 +29,9 @@ Deletes the string str_name from section [section_name] from ini_filename. If th
 
 \S2{deleteregkey} DeleteRegKey
 
-\c [/ifempty] root_key subkey
+\c [/ifempty | /ifnosubkeys | /ifnovalues] root_key subkey
 
-Deletes a registry key. If /ifempty is specified, the registry key will only be deleted if it has no subkeys (otherwise, the whole registry tree will be removed). Valid values for root_key are listed under \R{writeregstr}{WriteRegStr}. The error flag is set if the key could not be removed from the registry (or if it didn't exist to begin with).
+Deletes a registry key. If /ifempty is specified, the registry key will only be deleted if it has no subkeys and no values (otherwise, the whole registry tree will be removed). Valid values for root_key are listed under \R{writeregstr}{WriteRegStr}. The error flag is set if the key could not be removed from the registry (or if it didn't exist to begin with).
 
 \c DeleteRegKey HKLM "Software\My Company\My Software"
 \c DeleteRegKey /ifempty HKLM "Software\A key that might have subkeys"
@@ -144,6 +144,12 @@ This command writes a block of binary data to the registry. Valid values for roo
 
 \c WriteRegBin HKLM "Software\My Company\My Software" "Binary Value" DEADBEEF01223211151
 
+\S2{writeregnone} WriteRegNone
+
+\c root_key subkey key_name
+
+Writes a value without data to the registry.
+
 \S2{writeregdword} WriteRegDWORD
 
 \c root_key subkey key_name value
@@ -221,11 +227,4 @@ Does not affect \R{ainstalldirregkey}{InstallDirRegKey}. Instead, the registry m
 \c   ReadRegStr $0 HKLM Software\Microsoft\Windows\CurrentVersion ProgramFilesDir
 \c   DetailPrint $0 # prints C:\Program Files
 \c ${EndIf}
-
-\c Function .onInit
-\c   ${If} ${RunningX64}
-\c     SetRegView 64
-\c     ReadRegStr $INSTDIR HKLM Software\NSIS ""
-\c     SetRegView Default
-\c   ${EndIf}
-\c FunctionEnd
+\c SetRegView Default

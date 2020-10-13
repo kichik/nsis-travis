@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2019 Nullsoft and Contributors
+ * Copyright (C) 1999-2020 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_DBOPTIMIZE,_T("SetDatablockOptimize"),1,0,_T("(off|on)"),TP_ALL},
 {TOK_DELETEINISEC,_T("DeleteINISec"),2,0,_T("ini_file section_name"),TP_CODE},
 {TOK_DELETEINISTR,_T("DeleteINIStr"),3,0,_T("ini_file section_name entry_name"),TP_CODE},
-{TOK_DELETEREGKEY,_T("DeleteRegKey"),2,1,_T("[/ifempty] root_key subkey\n    root_key=(HKCR[32|64]|HKLM[32|64]|HKCU[32|64]|HKU|HKCC|HKDD|HKPD|SHCTX)"),TP_CODE},
+{TOK_DELETEREGKEY,_T("DeleteRegKey"),2,-1,_T("[/ifempty | /ifnosubkeys | /ifnovalues] root_key subkey\n    root_key=(HKCR[32|64]|HKLM[32|64]|HKCU[32|64]|HKU|HKCC|HKDD|HKPD|SHCTX)"),TP_CODE},
 {TOK_DELETEREGVALUE,_T("DeleteRegValue"),3,0,_T("root_key subkey entry_name\n    root_key=(HKCR[32|64]|HKLM[32|64]|HKCU[32|64]|HKU|HKCC|HKDD|HKPD|SHCTX)"),TP_CODE},
 {TOK_DELETE,_T("Delete"),1,1,_T("[/REBOOTOK] filespec"),TP_CODE},
 {TOK_DETAILPRINT,_T("DetailPrint"),1,0,_T("message"),TP_CODE},
@@ -110,6 +110,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_GETDLGITEM,_T("GetDlgItem"),3,0,_T("$(user_var: handle output) dialog item_id"),TP_CODE},
 {TOK_GETFULLPATHNAME,_T("GetFullPathName"),2,1,_T("[/SHORT] $(user_var: result) path_or_file"),TP_CODE},
 {TOK_GETTEMPFILENAME,_T("GetTempFileName"),1,1,_T("$(user_var: name output) [base_dir]"),TP_CODE},
+{TOK_GETKNOWNFOLDERPATH,_T("GetKnownFolderPath"),2,0,_T("$(user_var: result) knownfolderid"),TP_CODE},
 {TOK_HIDEWINDOW,_T("HideWindow"),0,0,_T(""),TP_CODE},
 {TOK_ICON,_T("Icon"),1,0,_T("local_icon.ico"),TP_GLOBAL},
 {TOK_IFABORT,_T("IfAbort"),1,1,_T("label_to_goto_if_abort [label_to_goto_if_no_abort]"),TP_CODE},
@@ -117,6 +118,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_IFFILEEXISTS,_T("IfFileExists"),2,1,_T("filename label_to_goto_if_file_exists [label_to_goto_otherwise]"),TP_CODE},
 {TOK_IFREBOOTFLAG,_T("IfRebootFlag"),1,1,_T("jump_if_set [jump_if_not_set]"),TP_CODE},
 {TOK_IFSILENT,_T("IfSilent"),1,1,_T("jump_if_silent [jump_if_not_silent]"),TP_CODE},
+{TOK_IFRTLLANG,_T("IfRtlLanguage"),1,1,_T("goto_true [goto_false]"),TP_CODE},
 {TOK_INSTALLDIRREGKEY,_T("InstallDirRegKey"),3,0,_T("root_key subkey entry_name\n    root_key=(HKCR|HKLM|HKCU|HKU|HKCC|HKDD|HKPD)"),TP_GLOBAL},
 {TOK_INSTCOLORS,_T("InstallColors"),1,1,_T("(/windows | (foreground_color background_color))"),TP_GLOBAL},
 {TOK_INSTDIR,_T("InstallDir"),1,0,_T("default_install_directory"),TP_GLOBAL},
@@ -194,7 +196,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_SETAUTOCLOSE,_T("SetAutoClose"),1,0,_T("(false|true)"),TP_CODE},
 {TOK_SETCTLCOLORS,_T("SetCtlColors"),2,2,_T("hwnd [/BRANDING] [text_color] [transparent|bg_color]"),TP_CODE},
 {TOK_SETBRANDINGIMAGE,_T("SetBrandingImage"),1,2,_T("[/IMGID=image_item_id_in_dialog] [/RESIZETOFIT] bitmap.bmp"),TP_CODE},
-{TOK_LOADANDSETIMAGE,_T("LoadAndSetImage"),4,4,_T("[/EXERESOURCE] [/STRINGID] [/RESIZETOFIT[WIDTH|HEIGHT]] ctrl imagetype lrflags image"),TP_CODE},
+{TOK_LOADANDSETIMAGE,_T("LoadAndSetImage"),4,6,_T("[/EXERESOURCE] [/STRINGID] [/RESIZETOFIT[WIDTH|HEIGHT]] ctrl imagetype lrflags imageid [$(user_var: imagehandle)]"),TP_CODE},
 {TOK_SETCOMPRESS,_T("SetCompress"),1,0,_T("(off|auto|force)"),TP_ALL},
 {TOK_SETCOMPRESSOR,_T("SetCompressor"),1,2,_T("[/FINAL] [/SOLID] (zlib|bzip2|lzma)"),TP_GLOBAL},
 {TOK_SETCOMPRESSORDICTSIZE,_T("SetCompressorDictSize"),1,0,_T("dict_size_mb"),TP_ALL},
@@ -211,8 +213,12 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_SETOVERWRITE,_T("SetOverwrite"),1,0,_T("on|off|try|ifnewer|ifdiff"),TP_ALL},
 {TOK_SETPLUGINUNLOAD,_T("SetPluginUnload"),1,0,_T("deprecated - plug-ins should handle this on their own"),TP_ALL},
 {TOK_SETREBOOTFLAG,_T("SetRebootFlag"),1,0,_T("true|false"),TP_CODE},
+{TOK_GETREGVIEW,_T("GetRegView"),1,0,_T("$(user_var: output)"),TP_CODE},
 {TOK_SETREGVIEW,_T("SetRegView"),1,0,_T("32|64|default|lastused"),TP_CODE},
+{TOK_IFALTREGVIEW,_T("IfAltRegView"),1,1,_T("goto_true [goto_false]"),TP_CODE},
+{TOK_GETSHELLVARCONTEXT,_T("GetShellVarContext"),1,0,_T("$(user_var: output)"),TP_CODE},
 {TOK_SETSHELLVARCONTEXT,_T("SetShellVarContext"),1,0,_T("all|current"),TP_CODE},
+{TOK_IFSHELLVARCONTEXTALL,_T("IfShellVarContextAll"),1,1,_T("goto_true [goto_false]"),TP_CODE},
 {TOK_SETSILENT,_T("SetSilent"),1,0,_T("silent|normal"),TP_CODE},
 {TOK_SHOWDETAILS,_T("ShowInstDetails"),1,0,_T("(hide|show|nevershow)"),TP_GLOBAL},
 {TOK_SHOWDETAILSUNINST,_T("ShowUninstDetails"),1,0,_T("(hide|show|nevershow)"),TP_GLOBAL},
@@ -257,6 +263,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_PESUBSYSVER,_T("PESubsysVer"),1,0,_T("major.minor"),TP_GLOBAL},
 {TOK_XPSTYLE,_T("XPStyle"),1,0,_T("(on|off)"),TP_GLOBAL},
 {TOK_REQEXECLEVEL,_T("RequestExecutionLevel"),1,0,_T("none|user|highest|admin"),TP_GLOBAL},
+{TOK_MANIFEST_APPENDCUSTOMSTRING,_T("ManifestAppendCustomString"),2,0,_T("path string"),TP_GLOBAL},
 {TOK_MANIFEST_DPIAWARE,_T("ManifestDPIAware"),1,0,_T("notset|true|false"),TP_GLOBAL},
 {TOK_MANIFEST_DPIAWARENESS,_T("ManifestDPIAwareness"),1,0,_T("comma_separated_string"),TP_GLOBAL},
 {TOK_MANIFEST_LPAWARE,_T("ManifestLongPathAware"),1,0,_T("notset|true|false"),TP_GLOBAL},
@@ -269,14 +276,14 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_P_SYSTEMEXEC,_T("!system"),1,2,_T("command [<OP retval> | <retvalsymbol>]\n    OP=(< > <> =)"),TP_ALL},
 {TOK_P_EXECUTE,_T("!execute"),1,2,_T("command [<OP retval> | <retvalsymbol>]\n    OP=(< > <> =)"),TP_ALL},
 {TOK_P_MAKENSIS,_T("!makensis"),1,2,_T("parameters [<OP retval> | <retvalsymbol>]"),TP_ALL},
-{TOK_P_ADDINCLUDEDIR,_T("!AddIncludeDir"),1,0,_T("dir"),TP_ALL},
+{TOK_P_ADDINCLUDEDIR,_T("!addincludedir"),1,0,_T("dir"),TP_ALL},
 {TOK_P_INCLUDE,_T("!include"),1,2,_T("[/NONFATAL] [/CHARSET=<") TSTR_INPUTCHARSET _T(">] filename.nsh"),TP_ALL},
 {TOK_P_CD,_T("!cd"),1,0,_T("absolute_or_relative_new_directory"),TP_ALL},
 {TOK_P_IF,_T("!if"),1,3,_T("[!] (value [(==,!=,S==,S!=,=,<>,<=,<,>,>=,&,&&,||) value2] | /FILEEXISTS path)"),TP_ALL},
 {TOK_P_IFDEF,_T("!ifdef"),1,-1,_T("symbol [| symbol2 [& symbol3 [...]]]"),TP_ALL},
 {TOK_P_IFNDEF,_T("!ifndef"),1,-1,_T("symbol [| symbol2 [& symbol3 [...]]]"),TP_ALL},
 {TOK_P_ENDIF,_T("!endif"),0,0,_T(""),TP_ALL},
-{TOK_P_DEFINE,_T("!define"),1,5,_T("[/ifndef | /redef] ([/date|/utcdate] symbol [value]) | (/file symbol filename) | (/math symbol val1 OP val2)\n    OP=(+ - * / % << >> >>> & | ^ ~ ! && ||)"),TP_ALL},
+{TOK_P_DEFINE,_T("!define"),1,5,_T("[/ifndef | /redef] ([/date|/utcdate] symbol [value]) | (/file symbol filename) | (/intfmt gflag fmtstr value) | (/math symbol val1 OP val2)\n    OP=(+ - * / % << >> >>> & | ^ ~ ! && ||)"),TP_ALL},
 {TOK_P_UNDEF,_T("!undef"),1,-1,_T("[/noerrors] symbol [...]"),TP_ALL},
 {TOK_P_ELSE,_T("!else"),0,-1,_T("[if[macro][n][def] ...]"),TP_ALL},
 {TOK_P_ECHO,_T("!echo"),1,0,_T("message"),TP_ALL},
@@ -313,7 +320,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_GETLABELADDR,_T("GetLabelAddress"),2,0,_T("output label"),TP_CODE},
 {TOK_GETCURRENTADDR,_T("GetCurrentAddress"),1,0,_T("output"),TP_CODE},
 
-{TOK_PLUGINDIR,_T("!AddPluginDir"),1,1,_T("[/target] new_plugin_directory"),TP_ALL},
+{TOK_PLUGINDIR,_T("!addplugindir"),1,1,_T("[/target] new_plugin_directory"),TP_ALL},
 {TOK_INITPLUGINSDIR,_T("InitPluginsDir"),0,0,_T(""),TP_CODE},
 // Added by ramon 23 May 2003
 {TOK_ALLOWSKIPFILES,_T("AllowSkipFiles"),1,0,_T("(off|on)"),TP_ALL},

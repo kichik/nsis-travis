@@ -58,7 +58,7 @@ int WINAPI _tWinMain(HINSTANCE hInst,HINSTANCE hOldInst,LPTSTR CmdLineParams,int
   DWORD iccestruct[2] = { 8, 0x8000 }; // ICC_LINK_CLASS (ComCtl32v6)
   FARPROC icce = SupportsW95() ? GetSysProcAddr("COMCTL32", "InitCommonControlsEx") : (FARPROC) InitCommonControlsEx;
   BOOL succ = ((BOOL(WINAPI*)(const void*))icce)(iccestruct);
-  if (!succ && (sizeof(void*) > 4 || LOBYTE(GetVersion()) >= 5))
+  if (!succ && (sizeof(void*) > 4 || LOBYTE(GetVersion()) >= 5)) // Must check the version because older shell32 versions have a incompatible function at the same ordinal
   {
     FARPROC lwrc = GetSysProcAddr("SHELL32", (LPCSTR) 258); // LinkWindow_RegisterClass
     if (lwrc) ((BOOL(WINAPI*)())lwrc)();
@@ -497,9 +497,10 @@ INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam
     case MakensisAPI::QUERYHOST: {
       if (MakensisAPI::QH_OUTPUTCHARSET == wParam) {
         const UINT reqcp = 1200; // We want UTF-16LE
-        SetWindowLongPtr(hwndDlg, DWLP_MSGRESULT, (LONG_PTR)(1+reqcp));
-        return TRUE;
+        return DlgRet(hwndDlg, (LONG_PTR)(1+reqcp));
       }
+      else if (MakensisAPI::QH_SUPPORTEDVERSION == wParam)
+        return DlgRet(hwndDlg, 0x03006000);
       return FALSE;
     }
     case WM_NOTIFY:
@@ -546,7 +547,8 @@ INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam
       return TRUE;
     case WM_COPYDATA:
     {
-      PCOPYDATASTRUCT cds = PCOPYDATASTRUCT(lParam);
+      using namespace MakensisAPI;
+      COPYDATASTRUCT *cds = (COPYDATASTRUCT*) lParam, cdsret;
       switch (cds->dwData) {
         case MakensisAPI::NOTIFY_SCRIPT:
           MemSafeFree(g_sdata.input_script);
@@ -564,6 +566,24 @@ INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam
           g_sdata.output_exe = (TCHAR*) MemAlloc(cds->cbData * sizeof(TCHAR));
           lstrcpy(g_sdata.output_exe, (TCHAR *)cds->lpData);
           break;
+        case MakensisAPI::PROMPT_FILEPATH:
+          if ((((PROMPT_FILEPATH_DATA*)cds->lpData)->Platform & 7) == sizeof(TCHAR))
+          {
+            TCHAR buf[MAX_PATH];
+            lstrcpyn(buf, FSPath::FindLastComponent(((PROMPT_FILEPATH_DATA*)cds->lpData)->Path), COUNTOF(buf));
+            OPENFILENAME of = { sizeof(of) };
+            of.hwndOwner = hwndDlg;
+            of.lpstrFilter = _T("*.exe\0*.exe\0*\0*.*\0");
+            of.lpstrFile = buf, of.nMaxFile = COUNTOF(buf);
+            of.Flags = OFN_EXPLORER|OFN_ENABLESIZING|OFN_HIDEREADONLY|OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;
+            if (GetSaveFileName(&of))
+            {
+              cdsret.dwData = cds->dwData, cdsret.cbData = (lstrlen(buf) + 1) * sizeof(TCHAR), cdsret.lpData = buf;
+              SendMessage((HWND) wParam, WM_COPYDATA, (SIZE_T) hwndDlg, (SIZE_T) &cdsret);
+            }
+            return TRUE;
+          }
+          return FALSE;
       }
       return TRUE;
     }
@@ -667,8 +687,19 @@ INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam
         }
         case IDM_WNDSPY:
         {
-          extern int ShowWndSpy(HWND hOwner);
+          extern INT_PTR ShowWndSpy(HWND hOwner);
           return ShowWndSpy(g_sdata.hwnd);
+        }
+        case IDM_GUIDGEN:
+        {
+          GUID guid;
+          TCHAR buf[41 * (1 + (sizeof(TCHAR) < 2))];
+          FARPROC func = GetKeyState(VK_CONTROL) < 0 ? GetSysProcAddr("RPCRT4", "UuidCreateSequential") : NULL;
+          ((HRESULT(WINAPI*)(GUID*))(func ? func : GetSysProcAddr("RPCRT4", "UuidCreate")))(&guid);
+          ((int(WINAPI*)(GUID*, TCHAR*, int))(GetSysProcAddr("OLE32", "StringFromGUID2")))(&guid, buf, 39);
+          for (UINT i = 0; sizeof(TCHAR) < 2; ++i) if (!(buf[i] = (CHAR) ((WCHAR*)buf)[i])) break; // WCHAR to TCHAR if ANSI
+          LogMessage(g_sdata.hwnd, (buf[38] = '\r', buf[39] = '\n', buf[40] = '\0', buf));
+          break;
         }
         case IDM_TEST:
         case IDC_TEST:
@@ -912,6 +943,7 @@ static INT_PTR CALLBACK AboutProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
       }
       break;
     case WM_DESTROY:
+      DeleteObject(dd.hHeaderFont);
       DeleteObject(dd.hFont);
       DeleteObject(dd.hBoldFont);
       break;
