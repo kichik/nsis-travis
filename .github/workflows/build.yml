@@ -8,7 +8,6 @@ jobs:
         run: |
           echo $Env:DEPLOY_KEY > $HOME/deploy_key
           ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i $HOME/deploy_key -T kichik,nsis@shell.sourceforge.net create
-          $arguments = "-oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net hexdump -C"
-          Start-Process ssh $arguments -RedirectStandardInput C:\windows\system32\notepad.exe -NoNewWindow -Wait
+          Get-Content C:\windows\system32\notepad.exe -Raw | ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net hexdump -C
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
