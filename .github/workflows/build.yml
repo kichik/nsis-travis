@@ -39,9 +39,12 @@ jobs:
           unzip $HOME/zlib.zip -d $HOME/zlib
       - name: Build
         run: |
-          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/debug-win32 test dist-zip
-          #set -o pipefail
-          #scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip |& tee build.log
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip
+        if: "!startsWith(matrix.os, 'windows')"
+      - name: Build (Windows)
+        run: |
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/debug-win32 test dist
+        if: startsWith(matrix.os, 'windows')
       - name: Config Errors
         if: ${{ failure() }}
         run: cat config.log
