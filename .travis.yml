@@ -4,7 +4,7 @@ compiler:
 os:
 #- windows
 - linux
-- osx
+#- osx
 dist: trusty
 addons:
   ssh_known_hosts: shell.sourceforge.net
@@ -29,13 +29,13 @@ before_install:
 - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then choco install python; pip install scons; fi
 # no make - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget -q http://dev-www.libreoffice.org/src/cppunit-1.14.0.tar.gz; tar xzf cppunit-1.14.0.tar.gz; pushd cppunit-1.14.0; ./autogen.sh; ./configure; make; make install; fi
 # freezes - if [[ $TRAVIS_OS_NAME == 'windows' ]]; then wget -q https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe; ./cppunit-msvc-1.12.1.exe /S; fi
-- if [[ $TRAVIS_OS_NAME == 'osx' ]]; then brew install scons mingw-w64 zlib; wget https://raw.githubusercontent.com/cloudflare/homebrew-cloudflare/master/curl.rb; brew install --HEAD -s curl.rb; fi
+- if [[ $TRAVIS_OS_NAME == 'osx' ]]; then brew install scons mingw-w64 zlib; wget -O cppunit.rb https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw; brew install --HEAD -s cppunit.rb; fi
 install:
 - wget -qO /tmp/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
 - mkdir /tmp/zlib
 - unzip /tmp/zlib.zip -d /tmp/zlib
 script:
-- set -o pipefail && scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test dist-zip | tee build.log || cat config.log
+#- set -o pipefail && scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=$CFG_LOG test dist-zip | tee build.log || cat config.log
 - echo skip for test
 env:
   global:
@@ -44,15 +44,15 @@ env:
   jobs:
   #- CFG_LOG=yes
   - CFG_LOG=no
-deploy:
-  provider: script
-  skip_cleanup: true
-  script: echo $DEPLOY_KEY | base64 -d > deploy_key && set -ex && chmod 600 deploy_key && ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i deploy_key -T kichik,nsis@shell.sourceforge.net create && ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i deploy_key kichik,nsis@shell.sourceforge.net echo hello world
-  #script: echo $DEPLOY_KEY | base64 -d > deploy_key && chmod 600 deploy_key && cat nsis-*.zip | ssh -i deploy_key kichik,nsis@shell.sourceforge.net /home/project-web/nsis/bin/nightly-deploy.sh
-  on:
-    branch: master
-    repo: kichik/nsis-travis
-    condition: "$CFG_LOG = no && $TRAVIS_OS_NAME = linux"
+#deploy:
+#  provider: script
+#  skip_cleanup: true
+#  script: echo $DEPLOY_KEY | base64 -d > deploy_key && set -ex && chmod 600 deploy_key && ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i deploy_key -T kichik,nsis@shell.sourceforge.net create && ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i deploy_key kichik,nsis@shell.sourceforge.net echo hello world
+#  #script: echo $DEPLOY_KEY | base64 -d > deploy_key && chmod 600 deploy_key && cat nsis-*.zip | ssh -i deploy_key kichik,nsis@shell.sourceforge.net /home/project-web/nsis/bin/nightly-deploy.sh
+#  on:
+#    branch: master
+#    repo: kichik/nsis-travis
+#    condition: "$CFG_LOG = no && $TRAVIS_OS_NAME = linux"
 after_deploy: rm -f deploy_key
 notifications:
   slack:
