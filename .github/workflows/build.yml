@@ -33,6 +33,8 @@ jobs:
           Start-Process ./cppunit-msvc-1.12.1.exe $arguments -NoNewWindow -Wait
           pip install scons
           choco install html-help-workshop
+          echo "${Env:ProgramFiles}\HTML Help Workshop" >> $GITHUB_PATH	
+          echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $GITHUB_PATH
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
@@ -46,6 +48,7 @@ jobs:
       - name: Build (Windows)
         run: |
           hhc /help
+          where hhc
           scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/release-win32 test dist
         if: startsWith(matrix.os, 'windows')
       - name: Config Errors
