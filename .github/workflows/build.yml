@@ -5,8 +5,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04, macos-10.15, windows-2019]
-        #os: [windows-2019]
         log: [yes, no]
+        include:
+          - nightly: nightly
+            os: windows-2019
+            log: no
     
     runs-on: ${{ matrix.os }}
     steps:
@@ -51,3 +54,13 @@ jobs:
       - name: Config Errors
         if: ${{ failure() }}
         run: cat config.log
+      - name: Deploy
+        run: |
+          echo https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID > build.log
+          zip nsis-*.zip build.log
+          echo $Env:DEPLOY_KEY > $HOME/deploy_key
+          ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i $HOME/deploy_key -T kichik,nsis@shell.sourceforge.net create
+          ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net echo hello world
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        if: matrix.nightly == 'nightly'
