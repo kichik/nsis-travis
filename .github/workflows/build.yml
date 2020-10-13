@@ -4,7 +4,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-10.15]
+        os: [ubuntu-18.04, macos-10.15, windows-2019]
         #os: [windows-2019]
         log: [yes, no]
     
@@ -29,7 +29,7 @@ jobs:
       - name: Choco Dependencies
         run: |
           curl -sLo cppunit-msvc-1.12.1.exe https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe
-          ./cppunit-msvc-1.12.1.exe /S
+          ./cppunit-msvc-1.12.1.exe /S /D=$HOME\cppunit
           pip install scons
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
@@ -39,7 +39,7 @@ jobs:
           unzip $HOME/zlib.zip -d $HOME/zlib
       - name: Build
         run: |
-          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/debug-win32 test dist-zip
           #set -o pipefail
           #scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip |& tee build.log
       - name: Config Errors
