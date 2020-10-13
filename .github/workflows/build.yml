@@ -33,7 +33,7 @@ jobs:
           Start-Process ./cppunit-msvc-1.12.1.exe $arguments -NoNewWindow -Wait
           pip install scons
           choco install html-help-workshop
-          echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $GITHUB_PATH
+          echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $Env:GITHUB_PATH
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
