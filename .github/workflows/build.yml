@@ -4,7 +4,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-10.15]
+        #os: [ubuntu-18.04, macos-10.15, windows-2019]
+        os: [windows-2019]
         log: [yes, no]
     
     runs-on: ${{ matrix.os }}
@@ -17,6 +18,17 @@ jobs:
       - name: Apt Dependencies
         run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y scons g++-mingw-w64-i686 binutils-mingw-w64-i686 zlib1g-dev libcppunit-dev
         if: startsWith(matrix.os, 'ubuntu')
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.8'
+        if: startsWith(matrix.os, 'windows')
+      - name: Choco Dependencies
+        run: |
+          wget -q https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe
+          ./cppunit-msvc-1.12.1.exe /S
+          pip install scons
+        if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
           wget -qO /tmp/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
