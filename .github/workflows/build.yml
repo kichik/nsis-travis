@@ -34,13 +34,13 @@ jobs:
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
-          curl -sLo /tmp/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
-          mkdir /tmp/zlib
-          unzip /tmp/zlib.zip -d /tmp/zlib
+          curl -sLo ${TEMP-/tmp}/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
+          mkdir ${TEMP-/tmp}/zlib
+          unzip ${TEMP-/tmp}/zlib.zip -d ${TEMP-/tmp}/zlib
       - name: Build
         run: |
           set -o pipefail
-          scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip | tee build.log
+          scons ZLIB_W32=${TEMP-/tmp}/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip | tee build.log
       - name: Config Errors
         if: ${{ failure() }}
         run: cat config.log
