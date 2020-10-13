@@ -31,6 +31,8 @@ jobs:
           curl -sLo cppunit-msvc-1.12.1.exe https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe
           ./cppunit-msvc-1.12.1.exe /S /D=$HOME\cppunit
           pip install scons
+          curl -sLo htmlhelp.exe "https://go.microsoft.com/fwlink/?LinkId=14188"
+          ./htmlhelp.exe /Q
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
