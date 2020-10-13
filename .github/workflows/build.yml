@@ -8,8 +8,12 @@ jobs:
         run: |
           echo $Env:DEPLOY_KEY > $HOME/deploy_key
           Set-PSDebug -Trace 1
+          choco install zip
+          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik@web.sourceforge.net:/home/project-web/nsis/gh-build.zip .
+          echo hello > build.log
+          zip gh-build.zip build.log
+          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key gh-build.zip kichik@web.sourceforge.net:/home/project-web/nsis/gh-build.zip
           ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -T kichik,nsis@shell.sourceforge.net create
-          #scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key C:\windows\system32\notepad.exe kichik@web.sourceforge.net:/home/project-web/nsis/gh-build.zip
           ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net "cat /home/project-web/nsis/gh-build.zip | /home/project-web/nsis/bin/nightly-deploy.sh"
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
