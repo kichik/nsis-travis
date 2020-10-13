@@ -32,11 +32,7 @@ jobs:
           $arguments = "/S /D=$HOME\cppunit"
           Start-Process ./cppunit-msvc-1.12.1.exe $arguments -NoNewWindow -Wait
           pip install scons
-          curl -sLo htmlhelp.exe "https://go.microsoft.com/fwlink/?LinkId=14188"
-          $arguments = "/Q"
-          Start-Process ./htmlhelp.exe $arguments -NoNewWindow -Wait
-          echo "${Env:ProgramFiles}\HTML Help Workshop" >> $GITHUB_PATH
-          echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $GITHUB_PATH
+          choco install html-help-workshop
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
