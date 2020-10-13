@@ -9,7 +9,7 @@ jobs:
           echo $Env:DEPLOY_KEY > $HOME/deploy_key
           Set-PSDebug -Trace 1
           ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -T kichik,nsis@shell.sourceforge.net create
-          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key C:\windows\system32\notepad.exe kichik,nsis@shell.sourceforge.net:/home/project-web/nsis/gh-build.zip
+          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key C:\windows\system32\notepad.exe kichik@web.sourceforge.net:/home/project-web/nsis/gh-build.zip
           ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net base64 /home/project-web/nsis/gh-build.zip
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
