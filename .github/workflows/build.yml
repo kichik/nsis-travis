@@ -39,8 +39,9 @@ jobs:
           unzip $HOME/zlib.zip -d $HOME/zlib
       - name: Build
         run: |
-          set -o pipefail
-          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip | tee build.log
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip
+          #set -o pipefail
+          #scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip |& tee build.log
       - name: Config Errors
         if: ${{ failure() }}
         run: cat config.log
