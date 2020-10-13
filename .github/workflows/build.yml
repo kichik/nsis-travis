@@ -7,8 +7,8 @@ jobs:
       - name: ssh
         run: |
           echo $Env:DEPLOY_KEY > $HOME/deploy_key
-          ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -t kichik,nsis@shell.sourceforge.net create
-          ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -t kichik,nsis@shell.sourceforge.net echo hello world
+          ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -tn kichik,nsis@shell.sourceforge.net create
+          ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -tn kichik,nsis@shell.sourceforge.net echo hello world
           Get-Content C:\windows\system32\notepad.exe -Raw | ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -t kichik,nsis@shell.sourceforge.net base64
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
