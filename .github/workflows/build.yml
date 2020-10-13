@@ -57,7 +57,7 @@ jobs:
       - name: Deploy
         run: |
           echo https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID > build.log
-          zip nsis-*.zip build.log
+          Compress-Archive -Path build.log -DestinationPath nsis-*.zip -Update
           echo $Env:DEPLOY_KEY > $HOME/deploy_key
           ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i $HOME/deploy_key -T kichik,nsis@shell.sourceforge.net create
           ssh -oStrictHostKeyChecking=no -o "BatchMode yes" -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net echo hello world
