@@ -35,6 +35,7 @@ jobs:
           choco install html-help-workshop
           echo "${Env:ProgramFiles}\HTML Help Workshop" >> $GITHUB_PATH	
           echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $GITHUB_PATH
+          echo “##[add-path]${Env:ProgramFiles(x86)}\HTML Help Workshop"
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
@@ -47,7 +48,8 @@ jobs:
         if: "!startsWith(matrix.os, 'windows')"
       - name: Build (Windows)
         run: |
-          cat $GITHUB_PATH
+          echo $env:Path
+          $env:Path += ";${Env:ProgramFiles(x86)}\HTML Help Workshop"
           dir "${Env:ProgramFiles(x86)}\HTML Help Workshop"
           scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/release-win32 test dist
         if: startsWith(matrix.os, 'windows')
