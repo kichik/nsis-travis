@@ -4,8 +4,8 @@ jobs:
   build:
     strategy:
       matrix:
-        #os: [ubuntu-18.04, macos-10.15, windows-2019]
-        os: [windows-2019]
+        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        #os: [windows-2019]
         log: [yes, no]
     
     runs-on: ${{ matrix.os }}
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
       - name: Brew Dependencies
-        run: brew install scons mingw-w64 zlib cppunit
+        run: brew info --json cppunit && brew install scons mingw-w64 zlib cppunit@1.13.2
         if: startsWith(matrix.os, 'macos')
       - name: Apt Dependencies
         run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y scons g++-mingw-w64-i686 binutils-mingw-w64-i686 zlib1g-dev libcppunit-dev
