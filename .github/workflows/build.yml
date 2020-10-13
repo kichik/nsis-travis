@@ -13,7 +13,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
       - name: Brew Dependencies
-        run: brew info --json cppunit && brew install scons mingw-w64 zlib cppunit@1.13.2
+        run: |
+          brew install scons mingw-w64 zlib
+          wget "https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw"
+          brew install --HEAD -s cppunit.rb
         if: startsWith(matrix.os, 'macos')
       - name: Apt Dependencies
         run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y scons g++-mingw-w64-i686 binutils-mingw-w64-i686 zlib1g-dev libcppunit-dev
