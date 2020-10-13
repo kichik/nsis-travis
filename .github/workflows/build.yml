@@ -5,6 +5,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04, macos-10.15]
+        log: [yes, no]
     
     runs-on: ${{ matrix.os }}
     steps:
@@ -14,7 +15,7 @@ jobs:
         run: brew install scons mingw-w64 zlib cppunit
         if: startsWith(matrix.os, 'macos')
       - name: Apt Dependencies
-        run: sudo apt-get install -y scons g++-mingw-w64-i686 binutils-mingw-w64-i686 zlib1g-dev libcppunit-dev
+        run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y scons g++-mingw-w64-i686 binutils-mingw-w64-i686 zlib1g-dev libcppunit-dev
         if: startsWith(matrix.os, 'ubuntu')
       - name: Zlib Dependency
         run: |
@@ -23,4 +24,8 @@ jobs:
           unzip /tmp/zlib.zip -d /tmp/zlib
       - name: Build
         run: |
-          scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=0 test dist-zip | tee build.log
+          set -o pipefail
+          scons ZLIB_W32=/tmp/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip | tee build.log
+      - name: Config Errors
+        if: ${{ failure() }}
+        run: cat config.log
