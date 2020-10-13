@@ -29,12 +29,12 @@ jobs:
       - name: Choco Dependencies
         run: |
           curl -sLo cppunit-msvc-1.12.1.exe https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe
-          ./cppunit-msvc-1.12.1.exe /S /D=$HOME\cppunit
+          Start-Process ./cppunit-msvc-1.12.1.exe /S /D=$HOME\cppunit -NoNewWindow -Wait
           pip install scons
           curl -sLo htmlhelp.exe "https://go.microsoft.com/fwlink/?LinkId=14188"
-          ./htmlhelp.exe /Q
-          echo "C:\Program Files\HTML Help Workshop" >> $GITHUB_PATH
-          echo "C:\Program Files (x86)\HTML Help Workshop" >> $GITHUB_PATH
+          Start-Process ./htmlhelp.exe /Q -NoNewWindow -Wait
+          echo "${Env:ProgramFiles}\HTML Help Workshop" >> $GITHUB_PATH
+          echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $GITHUB_PATH
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
