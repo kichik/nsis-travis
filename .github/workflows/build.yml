@@ -47,10 +47,8 @@ jobs:
         if: "!startsWith(matrix.os, 'windows')"
       - name: Build (Windows)
         run: |
-          dir /s /a /b C:\hhc.exe
-          dir /s /a /b D:\hhc.exe
+          Get-Childitem -Path C:\windows, D:\ -Include hhc.exe -Recurse -ErrorAction SilentlyContinue
           hhc /help
-          where hhc
           scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/release-win32 test dist
         if: startsWith(matrix.os, 'windows')
       - name: Config Errors
