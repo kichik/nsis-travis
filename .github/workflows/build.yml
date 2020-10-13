@@ -15,7 +15,7 @@ jobs:
       - name: Brew Dependencies
         run: |
           brew install scons mingw-w64 zlib
-          wget "https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw"
+          curl -sLo cppunit.rb "https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw"
           brew install --HEAD -s cppunit.rb
         if: startsWith(matrix.os, 'macos')
       - name: Apt Dependencies
