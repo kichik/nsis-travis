@@ -61,7 +61,7 @@ jobs:
           echo $Env:DEPLOY_KEY > $HOME/deploy_key
           Set-PSDebug -Trace 1
           rm nsis-*.zip
-          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" DOCTYPES=html dist-zip
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" DOCTYPES=web dist-zip
           echo https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID > build.log
           ls -Name nsis-*.zip -OutVariable zip
           zip $zip build.log
