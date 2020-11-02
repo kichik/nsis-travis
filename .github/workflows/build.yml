@@ -1,19 +1,103 @@
 name: CI
 on: [push, pull_request]
 jobs:
-  test-ssh:
-    runs-on: windows-2019
+  build:
+    strategy:
+      matrix:
+        #os: [ubuntu-18.04, macos-10.15, windows-2019]
+        #log: [yes, no]
+        os: [windows-2019]
+        log: [no]
+        include:
+          - nightly: nightly
+            os: windows-2019
+            log: no
+    
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: ssh
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Brew Dependencies
+        run: |
+          brew install scons mingw-w64 zlib
+          curl -sLo cppunit.rb "https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw"
+          brew install -s cppunit.rb
+        if: startsWith(matrix.os, 'macos')
+      - name: Apt Dependencies
+        run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y scons g++-mingw-w64-i686 binutils-mingw-w64-i686 zlib1g-dev libcppunit-dev
+        if: startsWith(matrix.os, 'ubuntu')
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.8'
+        if: startsWith(matrix.os, 'windows')
+      - name: Choco Dependencies
+        run: |
+          curl -sLo cppunit-msvc-1.12.1.exe https://downloads.sourceforge.net/project/cppunit-msvc/cppunit-msvc-1.12.1.exe
+          $arguments = "/S /D=$HOME\cppunit"
+          Start-Process ./cppunit-msvc-1.12.1.exe $arguments -NoNewWindow -Wait
+          pip install scons
+          choco install html-help-workshop zip rsync
+          echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $Env:GITHUB_PATH
+        if: startsWith(matrix.os, 'windows')
+      - name: Zlib Dependency
+        run: |
+          curl -sLo $HOME/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
+          mkdir $HOME/zlib
+          unzip $HOME/zlib.zip -d $HOME/zlib
+      - name: Build
+        run: |
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} test dist-zip
+        if: "!startsWith(matrix.os, 'windows')"
+      - name: Build (Windows)
+        run: |
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/release-win32 test dist
+        if: startsWith(matrix.os, 'windows')
+      - name: Config Errors
+        if: ${{ failure() }}
+        run: cat config.log
+      - name: Deploy
         run: |
           echo $Env:DEPLOY_KEY > $HOME/deploy_key
           Set-PSDebug -Trace 1
-          choco install zip
-          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik@web.sourceforge.net:/home/project-web/nsis/gh-build.zip .
-          echo hello > build.log
-          zip gh-build.zip build.log
-          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key gh-build.zip kichik@web.sourceforge.net:/home/project-web/nsis/gh-build.zip
-          ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key -T kichik,nsis@shell.sourceforge.net create
-          ssh -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik,nsis@shell.sourceforge.net "cat /home/project-web/nsis/gh-build.zip | /home/project-web/nsis/bin/nightly-deploy.sh"
+          rm nsis-*.zip
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" DOCTYPES=html dist-zip
+          echo https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID > build.log
+          ls -Name nsis-*.zip -OutVariable zip
+          zip $zip build.log
+          mkdir nightly
+          unzip $zip -d nightly
+          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key $zip kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/nsis.zip
+          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key build.log kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/build.log
+          echo "Options +indexes" > nightly/Docs/.htaccess
+          echo "Options +indexes" > nightly/Examples/.htaccess
+          echo "Options +indexes" > nightly/Include/.htaccess
+          echo "Options +indexes" > nightly/Contrib/.htaccess
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vaW --delete nightly/Docs/ kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/Docs/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vaW --delete nightly/Examples/ kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/Examples/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vaW --delete nightly/Include/ kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/Include/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vaW --delete nightly/Contrib/ kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/Contrib/
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        if: matrix.nightly == 'nightly' && github.ref == 'refs/heads/master'
+
+  notify:
+    name: Notify Slack
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - uses: 8398a7/action-slack@v3
+      with:
+        status: custom
+        fields: workflow,job,commit,repo,ref,author,took
+        custom_payload: |
+          {
+            username: 'action-slack',
+            icon_emoji: ':octocat:',
+            attachments: [{
+              color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
+              text: `${process.env.AS_WORKFLOW}\n${process.env.AS_JOB} (${process.env.AS_COMMIT}) of ${process.env.AS_REPO}@${process.env.AS_REF} by ${process.env.AS_AUTHOR} succeeded in ${process.env.AS_TOOK}`,
+            }]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
