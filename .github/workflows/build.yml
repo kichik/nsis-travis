@@ -9,6 +9,8 @@ jobs:
           echo $DEPLOY_KEY > $HOME/deploy_key
           head -n1 $HOME/deploy_key
           wc $HOME/deploy_key
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
 
   build:
     strategy:
