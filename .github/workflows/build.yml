@@ -7,8 +7,9 @@ jobs:
       - name: Upload to SourceForge
         run: |
           echo "$DEPLOY_KEY" > $HOME/deploy_key
-          head -n1 $HOME/deploy_key
-          wc $HOME/deploy_key
+          chmod 600 $HOME/deploy_key
+          RemoteNightly=kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly
+          scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/nsis.zip .
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
 
@@ -90,7 +91,7 @@ jobs:
           name: build.zip
       - name: Upload to SourceForge
         run: |
-          echo $DEPLOY_KEY > $HOME/deploy_key
+          echo "$DEPLOY_KEY" > $HOME/deploy_key
           set -ex
           chmod 600 $HOME/deploy_key
           mkdir nightly
