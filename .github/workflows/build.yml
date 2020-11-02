@@ -84,7 +84,7 @@ jobs:
           chmod 600 $HOME/deploy_key
           mkdir nightly
           unzip nsis-*.zip -d nightly
-          LocalNightly=nightly/nsis-*
+          LocalNightly=`ls nightly/nsis-*`
           RemoteNightly=kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly
           scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key nsis-*.zip $RemoteNightly/nsis.zip
           scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key nightly/build.log $RemoteNightly/build.log
