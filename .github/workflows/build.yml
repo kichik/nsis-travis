@@ -1,6 +1,15 @@
 name: CI
 on: [push, pull_request]
 jobs:
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Upload to SourceForge
+        run: |
+          echo $DEPLOY_KEY > $HOME/deploy_key
+          head -n1 $HOME/deploy_key
+          wc $HOME/deploy_key
+
   build:
     strategy:
       matrix:
