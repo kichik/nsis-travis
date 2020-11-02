@@ -76,10 +76,10 @@ jobs:
           echo "Options +indexes" > $LocalNightly/Examples/.htaccess
           echo "Options +indexes" > $LocalNightly/Include/.htaccess
           echo "Options +indexes" > $LocalNightly/Contrib/.htaccess
-          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vaW --delete $LocalNightly/Docs/ $RemoteNightly/Docs/
-          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vaW --delete $LocalNightly/Examples/ $RemoteNightly/Examples/
-          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vaW --delete $LocalNightly/Include/ $RemoteNightly/Include/
-          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vaW --delete $LocalNightly/Contrib/ $RemoteNightly/Contrib/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vvvaW --delete $LocalNightly/Docs/ $RemoteNightly/Docs/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vvvaW --delete $LocalNightly/Examples/ $RemoteNightly/Examples/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vvvaW --delete $LocalNightly/Include/ $RemoteNightly/Include/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vvvaW --delete $LocalNightly/Contrib/ $RemoteNightly/Contrib/
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         if: matrix.nightly == 'nightly' && github.ref == 'refs/heads/master'
@@ -88,19 +88,25 @@ jobs:
         with:
           name: build
           path: nsis-*.zip
-      - name: Notify Slack
-        uses: 8398a7/action-slack@v3
-        with:
-          status: custom
-          fields: workflow,job,commit,repo,ref,author,took
-          custom_payload: |
-            {
-              username: 'action-slack',
-              icon_emoji: ':octocat:',
-              attachments: [{
-                color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
-                text: `${process.env.AS_WORKFLOW}\n${process.env.AS_JOB} (${process.env.AS_COMMIT}) of ${process.env.AS_REPO}@${process.env.AS_REF} by ${process.env.AS_AUTHOR} succeeded in ${process.env.AS_TOOK}`,
-              }]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  notify:
+    name: Notify Slack
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: custom
+        fields: workflow,job,commit,repo,ref,author,took
+        custom_payload: |
+          {
+            username: 'action-slack',
+            icon_emoji: ':octocat:',
+            attachments: [{
+              color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
+              text: `${process.env.AS_WORKFLOW}\n${process.env.AS_JOB} (${process.env.AS_COMMIT}) of ${process.env.AS_REPO}@${process.env.AS_REF} by ${process.env.AS_AUTHOR} succeeded in ${process.env.AS_TOOK}`,
+            }]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
