@@ -77,10 +77,10 @@ jobs:
           echo "Options +indexes" > $LocalNightly/Examples/.htaccess
           echo "Options +indexes" > $LocalNightly/Include/.htaccess
           echo "Options +indexes" > $LocalNightly/Contrib/.htaccess
-          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vvaW --delete $LocalNightly/Docs/ $RemoteNightly/Docs/
-          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vvaW --delete $LocalNightly/Examples/ $RemoteNightly/Examples/
-          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vvaW --delete $LocalNightly/Include/ $RemoteNightly/Include/
-          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -vvaW --delete $LocalNightly/Contrib/ $RemoteNightly/Contrib/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -va --delete $LocalNightly/Docs/ $RemoteNightly/Docs/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -va --delete $LocalNightly/Examples/ $RemoteNightly/Examples/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -va --delete $LocalNightly/Include/ $RemoteNightly/Include/
+          rsync -e "ssh -oStrictHostKeyChecking=no -oBatchMode=yes" -va --delete $LocalNightly/Contrib/ $RemoteNightly/Contrib/
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         if: matrix.nightly == 'nightly' && github.ref == 'refs/heads/master'
@@ -96,7 +96,7 @@ jobs:
     needs: build
     steps:
     - uses: 8398a7/action-slack@v3
-      if: always()
+      if: ${{ always() }}
       with:
         status: custom
         fields: workflow,job,commit,repo,ref,author,took
