@@ -4,8 +4,6 @@ jobs:
   build:
     strategy:
       matrix:
-        #os: [ubuntu-18.04, macos-10.15, windows-2019]
-        #log: [yes, no]
         os: [windows-2019]
         log: [no]
         include:
@@ -37,7 +35,7 @@ jobs:
           $arguments = "/S /D=$HOME\cppunit"
           Start-Process ./cppunit-msvc-1.12.1.exe $arguments -NoNewWindow -Wait
           pip install scons
-          choco install html-help-workshop zip rsync
+          choco install html-help-workshop zip
           echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $Env:GITHUB_PATH
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
@@ -56,7 +54,7 @@ jobs:
       - name: Config Errors
         if: ${{ failure() }}
         run: cat config.log
-      - name: Deploy
+      - name: Nightly Build
         run: |
           rm nsis-*.zip
           scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" DOCTYPES=web dist-zip
@@ -67,20 +65,22 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: build
+          name: build.zip
           path: nsis-*.zip
+        if: matrix.nightly == 'nightly' && github.ref == 'refs/heads/master'
 
   nightly:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     needs: [build]
     steps:
       - name: Download a single artifact
         uses: actions/download-artifact@v2
         with:
-          name: build
+          name: build.zip
       - name: Upload to SourceForge
         run: |
           echo $DEPLOY_KEY > $HOME/deploy_key
+          set -ex
           chmod 600 $HOME/deploy_key
           mkdir nightly
           unzip nsis-*.zip -d nightly
