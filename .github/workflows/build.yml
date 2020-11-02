@@ -6,7 +6,7 @@ jobs:
     steps:
       - name: Upload to SourceForge
         run: |
-          echo $DEPLOY_KEY > $HOME/deploy_key
+          echo "$DEPLOY_KEY" > $HOME/deploy_key
           head -n1 $HOME/deploy_key
           wc $HOME/deploy_key
         env:
