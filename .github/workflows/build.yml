@@ -82,6 +82,11 @@ jobs:
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         if: matrix.nightly == 'nightly' && github.ref == 'refs/heads/master'
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: build
+          path: nsis-*.zip
 
   notify:
     name: Notify Slack
