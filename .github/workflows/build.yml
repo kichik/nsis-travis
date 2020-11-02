@@ -68,6 +68,7 @@ jobs:
           mkdir nightly
           unzip $zip -d nightly
           ls -Name nightly/nsis-* -OutVariable LocalNightly
+          $LocalNightly=nightly/$LocalNightly
           $RemoteNightly="kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly"
           scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key $zip kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/nsis.zip
           scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key build.log kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/build.log
@@ -87,24 +88,19 @@ jobs:
         with:
           name: build
           path: nsis-*.zip
-
-  notify:
-    name: Notify Slack
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-    - uses: 8398a7/action-slack@v3
-      with:
-        status: custom
-        fields: workflow,job,commit,repo,ref,author,took
-        custom_payload: |
-          {
-            username: 'action-slack',
-            icon_emoji: ':octocat:',
-            attachments: [{
-              color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
-              text: `${process.env.AS_WORKFLOW}\n${process.env.AS_JOB} (${process.env.AS_COMMIT}) of ${process.env.AS_REPO}@${process.env.AS_REF} by ${process.env.AS_AUTHOR} succeeded in ${process.env.AS_TOOK}`,
-            }]
-          }
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          fields: workflow,job,commit,repo,ref,author,took
+          custom_payload: |
+            {
+              username: 'action-slack',
+              icon_emoji: ':octocat:',
+              attachments: [{
+                color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
+                text: `${process.env.AS_WORKFLOW}\n${process.env.AS_JOB} (${process.env.AS_COMMIT}) of ${process.env.AS_REPO}@${process.env.AS_REF} by ${process.env.AS_AUTHOR} succeeded in ${process.env.AS_TOOK}`,
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
