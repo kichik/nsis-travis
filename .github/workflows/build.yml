@@ -68,7 +68,7 @@ jobs:
           mkdir nightly
           unzip $zip -d nightly
           ls -Name nightly/nsis-* -OutVariable LocalNightly
-          $LocalNightly=nightly/$LocalNightly
+          $LocalNightly="nightly/$LocalNightly"
           $RemoteNightly="kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly"
           scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key $zip kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/nsis.zip
           scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key build.log kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/build.log
