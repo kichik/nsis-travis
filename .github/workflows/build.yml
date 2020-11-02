@@ -62,7 +62,7 @@ jobs:
           Set-PSDebug -Trace 1
           rm nsis-*.zip
           scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" DOCTYPES=web dist-zip
-          echo https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID > build.log
+          echo https://github.com/$Env:GITHUB_REPOSITORY/actions/runs/$Env:GITHUB_RUN_ID > build.log
           ls -Name nsis-*.zip -OutVariable zip
           zip $zip build.log
           mkdir nightly
@@ -72,6 +72,7 @@ jobs:
           $RemoteNightly="kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly"
           scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key $zip kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/nsis.zip
           scp -oStrictHostKeyChecking=no -oBatchMode=yes -i $HOME/deploy_key build.log kichik,nsis@web.sourceforge.net:/home/project-web/nsis/htdocs/nightly/build.log
+          cp $LocalNightly/Docs/Contents.html $LocalNightly/Docs/index.html
           echo "Options +indexes" > $LocalNightly/Docs/.htaccess
           echo "Options +indexes" > $LocalNightly/Examples/.htaccess
           echo "Options +indexes" > $LocalNightly/Include/.htaccess
