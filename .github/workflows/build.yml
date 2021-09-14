@@ -55,7 +55,7 @@ jobs:
         if: "!startsWith(matrix.os, 'windows')"
       - name: Build (Windows)
         run: |
-          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/release-win32 test dist
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/release-win32 DOCTYPES=chm test dist
         if: startsWith(matrix.os, 'windows')
       - name: Config Errors
         if: ${{ failure() }}
