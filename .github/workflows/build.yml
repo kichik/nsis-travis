@@ -3,6 +3,7 @@ on:
   push:
     branches-ignore:
       - trunk
+      - svn2git-cache
   pull_request:
 jobs:
   build:
@@ -40,8 +41,7 @@ jobs:
           Start-Process ./cppunit-msvc-1.12.1.exe $arguments -NoNewWindow -Wait
           pip install scons
           choco install zip
-          # microsoft removed the download of htmlhelp.exe -- https://chocolatey.org/packages/html-help-workshop#comment-5245282888
-          #choco install html-help-workshop 
+          choco install html-help-workshop 
           echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $Env:GITHUB_PATH
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
@@ -85,6 +85,8 @@ jobs:
         with:
           name: build.zip
       - name: Upload to SourceForge
+        # don't override real repo's upload
+        if: ${{ false }}
         run: |
           echo "$DEPLOY_KEY" > $HOME/deploy_key
           set -ex
