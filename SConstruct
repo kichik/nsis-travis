@@ -1,3 +1,4 @@
+import platform; print("Using Python " + platform.python_version())
 EnsureSConsVersion(1,2)
 EnsurePythonVersion(2,7)
 
@@ -452,9 +453,11 @@ Import('SilentActionEcho IsPEExecutable SetPESecurityFlagsWorker MakeReproducibl
 def SetPESecurityFlagsAction(target, source, env):
 	for t in target:
 		SetPESecurityFlagsWorker(t.path)
+g_pesecflagsecho = {}
 def SetPESecurityFlagsActionEcho(target, source, env):
 	for t in target:
-		if IsPEExecutable(t.path):
+		if t.name[-4:].lower() == '.dll' and IsPEExecutable(t.path) and not t.path in g_pesecflagsecho:
+			g_pesecflagsecho[t.path] = 1
 			print('Setting PE flags on %s' % t.name)
 def SetPESecurityFlags(targets):
 	for t in targets:

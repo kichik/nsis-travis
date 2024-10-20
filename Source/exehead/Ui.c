@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2021 Nullsoft, Jeff Doozan and Contributors
+ * Copyright (C) 1999-2023 Nullsoft, Jeff Doozan and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -1005,7 +1005,7 @@ static INT_PTR CALLBACK DirProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
     // my_SetWindowText triggers an EN_CHANGE message that
     // triggers a WM_IN_UPDATEMSG message that uses m_curwnd
     // to get the selected directory (GetUIText).
-    // because m_curwnd is still outdated, dir varialble is
+    // because m_curwnd is still outdated, dir variable is
     // filled with an empty string. by default, dir points
     // to $INSTDIR.
     //

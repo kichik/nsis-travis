@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2021 Nullsoft and Contributors
+ * Copyright (C) 1999-2023 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ typedef struct
   int id;
   const TCHAR *name;
   int num_parms; // minimum number of parameters
-  int opt_parms; // optional parmaters, usually 0, can be -1 for unlimited.
+  int opt_parms; // optional parameters, usually 0, can be -1 for unlimited.
   const TCHAR *usage_str;
   int placement; // where the token can be placed
 } tokenType;
@@ -125,7 +125,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_INSTCOLORS,_T("InstallColors"),1,1,_T("(/windows | (foreground_color background_color))"),TP_GLOBAL},
 {TOK_INSTDIR,_T("InstallDir"),1,0,_T("default_install_directory"),TP_GLOBAL},
 {TOK_INSTPROGRESSFLAGS,_T("InstProgressFlags"),0,-1,_T("[flag [...]]\n    flag={smooth|colored}"),TP_GLOBAL},
-{TOK_INSTTYPE,_T("InstType"),1,1,_T("[un.]install_type_name [index_output] | /NOCUSTOM | /CUSTOMSTRING=str | /COMPONENTSONLYONCUSTOM"),TP_GLOBAL},
+{TOK_INSTTYPE,_T("InstType"),1,1,_T("[un.]install_type_name [index_output] | /[UNINST]NOCUSTOM | /CUSTOMSTRING=str | /[UNINST]COMPONENTSONLYONCUSTOM"),TP_GLOBAL},
 {TOK_INTOP,_T("IntOp"),3,1,_T("$(user_var: result) val1 OP [val2]\n    OP=(+ - * / % | & ^ ~ ! || && << >> >>>)"),TP_CODE},
 {TOK_INTPTROP,_T("IntPtrOp"),3,1,_T("$(user_var: result) val1 OP [val2]"),TP_CODE},
 {TOK_INTCMP,_T("IntCmp"),3,2,_T("val1 val2 jump_if_equal [jump_if_val1_less] [jump_if_val1_more]"),TP_CODE},
@@ -292,6 +292,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_P_ECHO,_T("!echo"),1,0,_T("message"),TP_ALL},
 {TOK_P_WARNING,_T("!warning"),0,1,_T("[warning_message]"),TP_ALL},
 {TOK_P_ERROR,_T("!error"),0,1,_T("[error_message]"),TP_ALL},
+{TOK_P_ASSERT,_T("!assert"),2,2,_T("value [op value2] message"),TP_ALL},
 
 {TOK_P_VERBOSE,_T("!verbose"),1,-1,_T("verbose_level | push | pop [...]"),TP_ALL},
 {TOK_P_PRAGMA,_T("!pragma"),1,-1,_T("warning <enable|disable|default|error|warning> <code|all> | warning <push|pop>"),TP_ALL},
@@ -306,6 +307,7 @@ static tokenType tokenlist[TOK__LAST] =
 {TOK_P_TEMPFILE,_T("!tempfile"),1,0,_T("symbol"),TP_ALL},
 {TOK_P_DELFILE,_T("!delfile"),1,1,_T("[/nonfatal] file"),TP_ALL},
 {TOK_P_APPENDFILE,_T("!appendfile"),2,2,_T("[/CHARSET=<") TSTR_OUTPUTCHARSET _T(">] [/RAWNL] file appended_line"),TP_ALL},
+{TOK_P_APPENDMEMFILE,_T("!appendmemfile"),1,1,_T("memfile [append]"),TP_ALL},
 {TOK_P_GETDLLVERSION,_T("!getdllversion"),2,3,_T("[/noerrors] [/packed] [/productversion] localfilename define_basename"),TP_ALL},
 {TOK_P_GETTLBVERSION,_T("!gettlbversion"),2,2,_T("[/noerrors] [/packed] localfilename define_basename"),TP_ALL},
 

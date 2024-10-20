@@ -189,7 +189,7 @@ SendMessage $0 ${WM_SETFONT} $1 1
 !define /ReDef UY ${UY_ROW2}
 !insertmacro CreateHeader "Developer Center" ${UX_W}
 !define /ReDef UY_MULTILINE 42
-!insertmacro CreateControl Label "Many more examples, tutorials, plug-ins and NSIS-releted software are available at the online Developer Center." ${UX_W} ${UY_MULTILINE}
+!insertmacro CreateControl Label "Many more examples, tutorials, plug-ins and NSIS-related software are available at the online Developer Center." ${UX_W} ${UY_MULTILINE}
 Pop $0
 ${SetCtlColors} $0 ${CT_PAGE} ${CB_PAGE}
 
@@ -296,7 +296,7 @@ ${If} ${Errors}
 	MessageBox MB_IconStop 'Error: Unable to open "$0"!'
 ${EndIf}
 !ifdef QUIT_ON_EXECUTE
-${IfThen} $9 < 0 ${|} SendMessage $hWndParent ${WM_CLOSE} 0 0 ${|}
+${IfThen} $9 & 0x8000 ${|} SendMessage $hWndParent ${WM_CLOSE} 0 0 ${|}
 !endif
 FunctionEnd
 

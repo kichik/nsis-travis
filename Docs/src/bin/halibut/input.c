@@ -150,6 +150,11 @@ static int get(input * in, filepos * pos)
     }
     /* FIXME: do input charmap translation. We should be returning
      * Unicode here. */
+    if (c == '\0')
+    {
+      err_zerochar(pos);
+      return EOF;
+    }
     return c;
   } else
     return EOF;
@@ -175,12 +180,16 @@ enum {
   tok_rbrace                    /* } */
 };
 
+#define tokiscmd(t,c) ( (t).type == tok_cmd && (t).cmd == (c) )
+
 /* Halibut command keywords. */
 enum {
   c__invalid,                   /* invalid command */
   c__comment,                   /* comment command (\#) */
   c__escaped,                   /* escaped character */
+  c__nop,                       /* no-op */
   c__nbsp,                      /* nonbreaking space */
+  c__midparacmd_unixnow,
   c_A,                          /* appendix heading */
   c_B,                          /* bibliography entry */
   c_BR,                         /* bibliography rewrite */
@@ -193,7 +202,8 @@ enum {
   c_U,                          /* unnumbered-chapter heading */
   c_W,                          /* Web hyperlink */
   c_L,                          /* Relative/local hyperlink */
-  c_b,                          /* bulletted list */
+  c_b,                          /* bulleted list */
+  c_bold,
   c_c,                          /* code */
   c_cfg,                        /* configuration directive */
   c_copyright,                  /* copyright statement */
@@ -201,6 +211,7 @@ enum {
   c_date,                       /* document processing date */
   c_define,                     /* macro definition */
   c_e,                          /* emphasis */
+  c_html,                       /* html code */
   c_i,                          /* visible index mark */
   c_ii,                         /* uncapitalised visible index mark */
   c_k,                          /* uncapitalised cross-reference */
@@ -210,10 +221,21 @@ enum {
   c_preamble,                   /* document preamble text */
   c_q,                          /* quote marks */
   c_rule,                       /* horizontal rule */
+  c_s,                          /* strong */
   c_title,                      /* document title */
   c_u,                          /* aux field is char code */
   c_versionid                   /* document RCS id */
 };
+
+#define getcmdstyle(c) \
+  (c) == c_c ? word_Code : \
+  (c) == c_cw ? word_WeakCode : \
+  (c) == c_e ? word_Emph : \
+  (c) == c_s ? word_Strong : \
+  (c) == c_bold ? word_Bold : \
+  (c) == c_html ? word_Html /* does c_html belong here? */ : \
+  word_Normal
+
 
 /* Perhaps whitespace should be defined in a more Unicode-friendly way? */
 #define iswhite(c) ( (c)==32 || (c)==9 || (c)==13 || (c)==10 )
@@ -254,114 +276,47 @@ static void match_kw(token * tok)
     char const *name;
     int id;
   } keywords[] = {
-    {
-    "#", c__comment}
-    ,                           /* comment command (\#) */
-    {
-    "-", c__escaped}
-    ,                           /* nonbreaking hyphen */
-    {
-    "A", c_A}
-    ,                           /* appendix heading */
-    {
-    "B", c_B}
-    ,                           /* bibliography entry */
-    {
-    "BR", c_BR}
-    ,                           /* bibliography rewrite */
-    {
-    "C", c_C}
-    ,                           /* chapter heading */
-    {
-    "H", c_H}
-    ,                           /* heading */
-    {
-    "I", c_I}
-    ,                           /* invisible index mark */
-    {
-    "IM", c_IM}
-    ,                           /* index merge/rewrite */
-    {
-    "K", c_K}
-    ,                           /* capitalised cross-reference */
-    {
-    "L", c_L}
-    ,                           /* Relative/local hyperlink */
-    {
-    "R", c_R}
-    ,                           /* free text cross-reference */
-    {
-    "U", c_U}
-    ,                           /* unnumbered-chapter heading */
-    {
-    "W", c_W}
-    ,                           /* Web hyperlink */
-    {
-    "\\", c__escaped}
-    ,                           /* escaped backslash (\\) */
-    {
-    "_", c__nbsp}
-    ,                           /* nonbreaking space (\_) */
-    {
-    "b", c_b}
-    ,                           /* bulletted list */
-    {
-    "c", c_c}
-    ,                           /* code */
-    {
-    "cfg", c_cfg}
-    ,                           /* configuration directive */
-    {
-    "copyright", c_copyright}
-    ,                           /* copyright statement */
-    {
-    "cw", c_cw}
-    ,                           /* weak code */
-    {
-    "date", c_date}
-    ,                           /* document processing date */
-    {
-    "define", c_define}
-    ,                           /* macro definition */
-    {
-    "e", c_e}
-    ,                           /* emphasis */
-    {
-    "i", c_i}
-    ,                           /* visible index mark */
-    {
-    "ii", c_ii}
-    ,                           /* uncapitalised visible index mark */
-    {
-    "k", c_k}
-    ,                           /* uncapitalised cross-reference */
-    {
-    "n", c_n}
-    ,                           /* numbered list */
-    {
-    "nocite", c_nocite}
-    ,                           /* bibliography trickery */
-    {
-    "preamble", c_preamble}
-    ,                           /* document preamble text */
-    {
-    "q", c_q}
-    ,                           /* quote marks */
-    {
-    "rule", c_rule}
-    ,                           /* horizontal rule */
-    {
-    "title", c_title}
-    ,                           /* document title */
-    {
-    "versionid", c_versionid}
-    ,                           /* document RCS id */
-    {
-    "{", c__escaped}
-    ,                           /* escaped lbrace (\{) */
-    {
-    "}", c__escaped}
-    ,                           /* escaped rbrace (\}) */
+    { "#", c__comment },             /* comment command (\#) */
+    { "-", c__escaped },             /* nonbreaking hyphen */
+    { ".", c__nop },
+    { "A", c_A },                    /* appendix heading */
+    { "B", c_B },                    /* bibliography entry */
+    { "BR", c_BR },                  /* bibliography rewrite */
+    { "C", c_C },                    /* chapter heading */
+    { "H", c_H },                    /* heading */
+    { "I", c_I },                    /* invisible index mark */
+    { "IM", c_IM },                  /* index merge/rewrite */
+    { "K", c_K },                    /* capitalised cross-reference */
+    { "L", c_L },                    /* Relative/local hyperlink */
+    { "R", c_R },                    /* free text cross-reference */
+    { "U", c_U },                    /* unnumbered-chapter heading */
+    { "W", c_W },                    /* Web hyperlink */
+    { "\\", c__escaped },            /* escaped backslash (\\) */
+    { "_", c__nbsp },                /* nonbreaking space (\_) */
+    { "b", c_b },                    /* bulleted list */
+    { "bold", c_bold },
+    { "c", c_c },                    /* code */
+    { "cfg", c_cfg },                /* configuration directive */
+    { "copyright", c_copyright },    /* copyright statement */
+    { "cw", c_cw } ,                 /* weak code */
+    { "date", c_date },              /* document processing date */
+    { "define", c_define },          /* macro definition */
+    { "e", c_e },                    /* emphasis */
+    { "hackunixnow", c__midparacmd_unixnow },
+    { "html", c_html },
+    { "i", c_i },                    /* visible index mark */
+    { "ii", c_ii },                  /* uncapitalised visible index mark */
+    { "k", c_k },                    /* uncapitalised cross-reference */
+    { "n", c_n },                    /* numbered list */
+    { "nocite", c_nocite },          /* bibliography trickery */
+    { "preamble", c_preamble },      /* document preamble text */
+    { "q", c_q },                    /* quote marks */
+    { "rule", c_rule },              /* horizontal rule */
+    { "s", c_s },                    /* strong */
+    { "title", c_title },            /* document title */
+    { "versionid", c_versionid },    /* document RCS id */
+    { "{", c__escaped },             /* escaped lbrace (\{) */
+    { "}", c__escaped },             /* escaped rbrace (\}) */
   };
   int i, j, k, c;
 
@@ -396,13 +351,13 @@ static void match_kw(token * tok)
   {
     /* We expect hex characters thereafter. */
     wchar_t *p = tok->text + 1;
-    int n = 0;
+    int n = 0, seen_a_char = 0;
     while (*p && ishex(*p))
     {
       n = 16 * n + fromhex(*p);
-      p++;
+      p++, seen_a_char++;
     }
-    if (!*p)
+    if (!*p && seen_a_char)
     {
       tok->cmd = c_u;
       tok->aux = n;
@@ -474,7 +429,7 @@ token get_token(input * in)
   {                             /* tok_cmd */
     c = get(in, &cpos);
     if (c == '-' || c == '\\' || c == '_' ||
-        c == '#' || c == '{' || c == '}')
+        c == '#' || c == '{' || c == '}' || c == '.')
     {
       /* single-char command */
       rdadd(&rs, (wchar_t)c);
@@ -635,6 +590,36 @@ static paragraph *addpara(paragraph newpara, paragraph *** hptrptr)
  */
 #define dtor(t) ( sfree(t.text) )
 
+static int is_special_midpara_cmd(token*t)
+{
+  return tokiscmd(*t, c__midparacmd_unixnow);
+}
+
+static int handle_special_midpara_cmd(token*t, rdstring*rs, paragraph ***hptrptr)
+{
+  wchar_t wbuf[100];
+  paragraph par;
+
+  if (t->type != tok_cmd) return 0;
+  initpara(par);
+  par.fpos = t->pos;
+  switch(t->cmd)
+  {
+  case c__midparacmd_unixnow:
+    ultou(getutcunixtime(), wbuf);
+    rdadds(rs, wbuf);
+    return 1;
+  }
+  return 0;
+}
+
+#define stack_item_push(stck__, sitype__) do { \
+    struct stack_item *si__ = mknew(struct stack_item); \
+    si__->type = sitype__; \
+    stk_push((stck__), si__); \
+  } while(!__LINE__)
+
+
 /*
  * Reads a single file (ie until get() returns EOF)
  */
@@ -644,7 +629,7 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
   paragraph par;
   word wd, **whptr, **idximplicit;
   wchar_t utext[2], *wdtext;
-  int style, spcstyle;
+  int style, spcstyle, tmpstyle;
   int already;
   int iswhite, seenwhite;
   int type;
@@ -668,8 +653,25 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
   const rdstring nullrs = { 0, 0, NULL };
   wchar_t uchr;
 
-  t.text = NULL;
-  already = FALSE;
+  t = get_token(in);
+  already = TRUE;
+
+  /*
+   * Ignore tok_white if it appears at the very start of the file.
+   *
+   * At the start of most paragraphs, tok_white is guaranteed not to
+   * appear, because get_token will have folded it into the
+   * preceding tok_eop (since a tok_eop is simply a sequence of
+   * whitespace containing at least two newlines).
+   *
+   * The one exception is if there isn't a preceding tok_eop, i.e.
+   * if the very first paragraph begins with something that lexes as
+   * a tok_white. Easiest way to get round that is to ignore it
+   * here, by unsetting the 'already' flag which will force a new
+   * token to be fetched below.
+   */
+  if (t.type == tok_white)
+      already = FALSE;
 
   /*
    * Loop on each paragraph.
@@ -763,7 +765,10 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
         break;
       case c__comment:
         if (isbrace(in))
+        {
+          needkw = -1; // Upstream 56b96573 (r8312)
           break;                /* `\#{': isn't a comment para */
+        }
         do
         {
           dtor(t), t = get_token(in);
@@ -880,12 +885,14 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
                  t.type == tok_word ||
                  t.type == tok_white ||
                  (t.type == tok_cmd && t.cmd == c__nbsp) ||
-                 (t.type == tok_cmd && t.cmd == c__escaped))
+                 (t.type == tok_cmd && t.cmd == c__escaped) ||
+                 /* TODO: Merge from upstream?: (t.type == tok_cmd && t.cmd == c_u) || */
+                is_special_midpara_cmd(&t))
           {
             if (t.type == tok_white ||
                 (t.type == tok_cmd && t.cmd == c__nbsp))
               rdadd(&rs, ' ');
-            else
+            else if (!handle_special_midpara_cmd(&t, &rs, ret))
               rdadds(&rs, t.text);
           }
           if (t.type != tok_rbrace)
@@ -991,6 +998,10 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
         break;
       }
 
+      if (t.type == tok_cmd && t.cmd == c__nop) {
+        dtor(t), t = get_token(in);
+        continue;              /* do nothing! */
+      }
       if (t.type == tok_cmd && t.cmd == c__escaped)
       {
         t.type = tok_word;      /* nice and simple */
@@ -1065,7 +1076,19 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
       case tok_rbrace:
         sitem = stk_pop(parsestk);
         if (!sitem)
+        {
+#ifdef HALIBUT_UPSTREAM
+          /*
+           * This closing brace could have been an
+           * indication that the cross-paragraph stack
+           * wants popping. Accordingly, we treat it here
+           * as an indication that the paragraph is over.
+           */
+          already = TRUE;
+          goto finished_para;
+#endif
           error(err_unexbrace, &t.pos);
+        }
         else
         {
           if (sitem->type & stack_ualt)
@@ -1078,10 +1101,22 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
             style = word_Normal;
             spcstyle = word_WhiteSpace;
           }
-          if (sitem->type & stack_idx )          {
+          if (sitem->type & stack_idx ) {
+            rdadds(&indexstr, L"");
             indexword->text = ustrdup(indexstr.text);
             if (index_downcase)
+            {
+#ifdef HALIBUT_UPSTREAM
+              word *w;
               ustrlow(indexword->text);
+              ustrlow(indexstr.text);
+              for (w = idxwordlist; w; w = w->next)
+                if (w->text)
+                  ustrlow(w->text);
+#else
+              ustrlow(indexword->text);
+#endif
+            }
             indexing = FALSE;
             rdadd(&indexstr, L'\0');
             index_merge(idx, FALSE, indexstr.text, idxwordlist);
@@ -1217,7 +1252,7 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
           {
             if (wd.type == word_Normal)
             {
-              time_t thetime = time(NULL);
+              time_t thetime = current_time();
               struct tm *broken = localtime(&thetime);
               already = TRUE;
               wdtext = ustrftime(NULL, broken);
@@ -1240,7 +1275,7 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
             }
             if (wd.type == word_Normal)
             {
-              time_t thetime = time(NULL);
+              time_t thetime = current_time();
               struct tm *broken = localtime(&thetime);
               wdtext = ustrftime(rs.text, broken);
               wd.type = style;
@@ -1276,19 +1311,17 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
              */
             dtor(t), t = get_token(in);
             /*
-             * Special cases: \W{}\c, \W{}\e, \W{}\cw
+             * Special cases: \W{}\c, \W{}\e, \W{}\s, \W{}\bold \W{}\cw
              */
             sitem = mknew(struct stack_item);
             sitem->type = stack_hyper;
-            if (t.type == tok_cmd &&
-                (t.cmd == c_e || t.cmd == c_c || t.cmd == c_cw))
+            if (t.type == tok_cmd && (tmpstyle = getcmdstyle(t.cmd)))
             {
               if (style != word_Normal)
                 error(err_nestedstyles, &t.pos);
               else
               {
-                style = (t.cmd == c_c ? word_Code :
-                         t.cmd == c_cw ? word_WeakCode : word_Emph);
+                style = tmpstyle;
                 spcstyle = tospacestyle(style);
                 sitem->type |= stack_style;
               }
@@ -1304,18 +1337,27 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
             }
           }
           break;
+        case c_html:
+          if (style != word_Normal) fatal(err_nestedstyles, &t.pos);
+          type = t.cmd, dtor(t), t = get_token(in);
+          if (t.type == tok_lbrace || (error(err_explbr, &t.pos), FALSE))
+          {
+            style = word_Html, spcstyle = tospacestyle(style);
+            stack_item_push(parsestk, stack_style);
+          }
+          break;
         case c_c:
         case c_cw:
         case c_e:
+        case c_s:
+        case c_bold:
           type = t.cmd;
           if (style != word_Normal)
           {
             error(err_nestedstyles, &t.pos);
             /* Error recovery: eat lbrace, push nop. */
             dtor(t), t = get_token(in);
-            sitem = mknew(struct stack_item);
-            sitem->type = stack_nop;
-            stk_push(parsestk, sitem);
+            stack_item_push(parsestk, stack_nop);
           }
           dtor(t), t = get_token(in);
           if (t.type != tok_lbrace)
@@ -1323,12 +1365,8 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
             error(err_explbr, &t.pos);
           } else
           {
-            style = (type == c_c ? word_Code :
-                     type == c_cw ? word_WeakCode : word_Emph);
-            spcstyle = tospacestyle(style);
-            sitem = mknew(struct stack_item);
-            sitem->type = stack_style;
-            stk_push(parsestk, sitem);
+            style = getcmdstyle(type), spcstyle = tospacestyle(style);
+            stack_item_push(parsestk, stack_style);
           }
           break;
         case c_i:
@@ -1340,26 +1378,22 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
             error(err_nestedindex, &t.pos);
             /* Error recovery: eat lbrace, push nop. */
             dtor(t), t = get_token(in);
-            sitem = mknew(struct stack_item);
-            sitem->type = stack_nop;
-            stk_push(parsestk, sitem);
+            stack_item_push(parsestk, stack_nop);
           }
           sitem = mknew(struct stack_item);
           sitem->type = stack_idx;
           dtor(t), t = get_token(in);
           /*
-           * Special cases: \i\c, \i\e, \i\cw
+           * Special cases: \i\c, \i\e, \i\s, \i\bold, \i\cw
            */
           wd.fpos = t.pos;
-          if (t.type == tok_cmd &&
-              (t.cmd == c_e || t.cmd == c_c || t.cmd == c_cw))
+          if (t.type == tok_cmd && (tmpstyle = getcmdstyle(t.cmd)))
           {
             if (style != word_Normal)
               error(err_nestedstyles, &t.pos);
             else
             {
-              style = (t.cmd == c_c ? word_Code :
-                       t.cmd == c_cw ? word_WeakCode : word_Emph);
+              style = tmpstyle;
               spcstyle = tospacestyle(style);
               sitem->type |= stack_style;
             }
@@ -1392,8 +1426,12 @@ static void read_file(paragraph *** ret, input * in, indexdata * idx, tree234 *m
           break;
         case c_u:
           uchr = t.aux;
-          utext[0] = uchr;
-          utext[1] = 0;
+          if (uchr == 0)
+          {
+            err_zerochar(&t.pos);
+            break;
+          }
+          utext[0] = uchr, utext[1] = 0;
           wd.type = style;
           wd.breaks = FALSE;
           wd.alt = NULL;

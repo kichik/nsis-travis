@@ -12,7 +12,7 @@ User variables must be declared with the \R{var}{Var} command. You can use these
 
 \c [/GLOBAL] var_name
 
-Declare a user variable. Allowed characters for variables names: [a-z][A-Z][0-9] and '_'. All defined variables are global, even if defined in a section or a function. To make this clear, variables defined in a section or a function must use the /GLOBAL flag. The /GLOBAL flag is not required outside of sections and functions.
+Declare a user variable. Allowed characters for variables names: [a-z][A-Z][0-9], '.' and '_'. All defined variables are global, even if defined in a section or a function. To make this clear, variables defined in a section or a function must use the /GLOBAL flag. The /GLOBAL flag is not required outside of sections and functions.
 
 \c Var example
 \c
@@ -33,7 +33,7 @@ Registers. These variables can be used just like user variables, but are usually
 
 The installation directory ($INSTDIR is modifiable using \R{StrCpy}{StrCpy}, \R{readregstr}{ReadRegStr}, \R{readinistr}{ReadINIStr}, etc. - This could be used, for example, in the \R{oninit}{.onInit} function to do a more advanced detection of install location).
 
-Note that in uninstaller code, $INSTDIR contains the directory where the uninstaller lies. It does \\<b\\>not\\</b\\> necessarily contain the same value it contained in the installer. For example, if you write the uninstaller to $WINDIR and the user doesn't move it, $INSTDIR will be $WINDIR in the uninstaller. If you write the uninstaller to another location, you should keep the installer's $INSTDIR in the registry or an alternative storing facility and read it in the uninstaller.
+Note that in uninstaller code, $INSTDIR contains the directory where the uninstaller lies. It does \s{not} necessarily contain the same value it contained in the installer. For example, if you write the uninstaller to $WINDIR and the user doesn't move it, $INSTDIR will be $WINDIR in the uninstaller. If you write the uninstaller to another location, you should keep the installer's $INSTDIR in the registry or an alternative storing facility and read it in the uninstaller.
 
 \e{$OUTDIR}
 
@@ -171,7 +171,9 @@ The document templates directory. The context of this constant (All Users or Cur
 
 \e{$APPDATA}
 
-The (roaming) application data directory.\#{ Detection of the current user path requires Internet Explorer 4 and above. Detection of the all users path requires Internet Explorer 5 and above. The context of this constant (All Users or Current user) depends on the \R{setshellvarcontext}{SetShellVarContext} setting. The default is the current user.}
+The (roaming) application data directory. The context of this constant (All Users or Current user) depends on the \R{setshellvarcontext}{SetShellVarContext} setting. The default is the current user.
+
+Detection of the current user path requires Internet Explorer 4 and above. Detection of the all users path requires Internet Explorer 5 and above. 
 
 This constant is not available on Windows 95 unless Internet Explorer 4 with Active Desktop is installed.
 

@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2021 Nullsoft and Contributors
+ * Copyright (C) 1999-2023 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -226,6 +226,7 @@ class CEXEBuild {
       MAX_MACRORECURSION = 50
     };
     static const TCHAR* get_commandlinecode_filename() { return _T("<command line>"); }
+    static const TCHAR* get_memorycode_filename() { return _T("<memory>"); }
 
     void warning(DIAGCODE dc, const TCHAR *s, ...); // to add a warning to the compiler's warning list.
     void warning_fl(DIAGCODE dc, const TCHAR *s, ...); // warning with file name and line number
@@ -258,7 +259,8 @@ class CEXEBuild {
     // process a script (you can process as many scripts as you want,
     // it is as if they are concatenated)
     int process_script(NIStream&Strm, const TCHAR *filename);
-    int process_oneline(const TCHAR *line, const TCHAR *curfilename, int lineptr);
+    enum PROCESSLINEFLAGS { PLF_MACRO = 0x01, PLF_VIRTUALFILE = 0x02 };
+    int process_oneline(const TCHAR *line, const TCHAR *curfilename, int lineptr, unsigned int plflags);
     
     // you only get to call write_output once, so use it wisely.
     int write_output(void);
@@ -331,7 +333,9 @@ class CEXEBuild {
 #endif
     int parseScript();
     int includeScript(const TCHAR *f, NStreamEncoding&enc);
+    int includeScriptLines(const TCHAR *start, const TCHAR *end, const TCHAR *name);
     TCHAR* GetMacro(const TCHAR *macroname, TCHAR**macroend = 0);
+    TCHAR* GetMacro(size_t idx);
     bool MacroExists(const TCHAR *macroname) { return !!GetMacro(macroname); }
     LANGID ParseLangIdParameter(const LineParser&line, int token);
     int LoadLicenseFile(const TCHAR *file, TCHAR** pdata, const TCHAR *cmdname, WORD AnsiCP);
@@ -375,12 +379,15 @@ class CEXEBuild {
     bool inside_comment;
     int multiple_entries_instruction;  // 1 (true) or 0 (false)
 
+    int pp_boolifyexpression(LineParser&line, int &result, bool allow_logicneg = true, int ignore_last_tokens = 0);
+    int pp_assert(LineParser&line);
     int pp_macro(LineParser&line);
     int pp_macroundef(LineParser&line);
     int pp_insertmacro(LineParser&line);
     int pp_tempfile(LineParser&line);
     int pp_delfile(LineParser&line);
     int pp_appendfile(LineParser&line);
+    int pp_appendmemfile(LineParser&line);
     int pp_getversionhelper(const TCHAR *cmdname, const TCHAR *path, const TCHAR *basesymname, DWORD high, DWORD low, DWORD flags);
     int pp_getversion(int which_token, LineParser&line);
     int pp_searchreplacestring(LineParser&line);
@@ -617,7 +624,7 @@ class CEXEBuild {
 
     header build_header, build_uninst, *cur_header;
     int uninstall_mode; // Are we in uninstall mode?  Acts like a bool.
-    int uninstall_size,uninstall_size_full;
+    UINT32 uninstall_size,uninstall_size_full;
     int uninstaller_writes_used;
 
     TCHAR build_output_filename[1024];

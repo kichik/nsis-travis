@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 2002-2021 Amir Szekely <kichik@netvision.net.il> and Contributors
+ * Copyright (C) 2002-2023 Amir Szekely <kichik@netvision.net.il> and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -478,7 +478,10 @@ void CDialogTemplate::ConvertToRTL() {
       }
     }
     else if (!IS_INTRESOURCE(m_vItems[i]->szClass) && !WinWStrICmpASCII(m_vItems[i]->szClass, "SysTreeView32")) {
-      m_vItems[i]->dwStyle |= TVS_RTLREADING;
+      // we can't have both TVS_RTLREADING and WS_EX_LAYOUTRTL because the text becomes non-LTR
+      // we chose just WS_EX_LAYOUTRTL because just TVS_RTLREADING changes the text only and not the tree itself
+      // https://github.com/qbittorrent/qBittorrent/pull/19929
+      //m_vItems[i]->dwStyle |= TVS_RTLREADING;
       m_vItems[i]->dwExtStyle |= WS_EX_LAYOUTRTL;
       addExStyle = true;
       addExLeftScrollbar = false;

@@ -18,7 +18,6 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 
-  Unicode support by Jim Park -- 08/10/2007
 */
 #ifndef MAKENSIS_H
 #define MAKENSIS_H
@@ -57,11 +56,11 @@ static inline bool IsWin95() { return SupportsW95() && (GetVersion() & (0x8000FF
 #define CONTRIB      _T("Fritz Elfert, Justin Frankel, Amir Szekely, Sunil Kamath, Joost Verburg, Anders Kjersem")
 #define DONATE       _T("<A>Donate</A> to support NSIS development.")
 #define DONATEURL    { 'h'|x,'t','t'|x,'p',':'|x,'/'|x,'/'|x,'n'|x,'s'|x,'i'|x,'s'|x,'.'|x,'s'|x,'f'|x,'.','n'|x,'e'|x,'t'|x,'/'|x,'r','/'|x,'D'|x,'o'|x,'n'|x,'a'|x,'t'|x,'e'|x,'\0' } // "Encrypted"
-#define DOCPATH      "https://nsis.sourceforge.io/Docs/"
+#define DOCURL       "https://nsis.sourceforge.io/Docs/"
 #define LOCALDOCS    _T("\\NSIS.chm")
 #define ERRBOXTITLE  0 //_T("Error")
-#define NSISERROR    _T("Unable to intialize MakeNSIS. Please verify that makensis.exe is in the same directory as makensisw.exe.")
-#define DLGERROR     _T("Unable to intialize MakeNSISW.")
+#define NSISERROR    _T("Unable to initialize MakeNSIS. Please verify that makensis.exe is in the same directory as makensisw.exe.")
+#define DLGERROR     _T("Unable to initialize MakeNSISW.")
 #define SYMBOLSERROR _T("Symbol cannot contain whitespace characters")
 #define MULTIDROPERROR _T("Dropping more than one script at a time is not supported")
 #define NSISUPDATEPROMPT _T("Running NSIS Update will close MakeNSISW.\nContinue?")
@@ -198,12 +197,14 @@ typedef struct {
   UINT AnimSpeed, FinalHeaderPos;
 } ABOUTDLGDATA;
 INT_PTR ShowAboutDialog(HWND hwndOwner);
+
 INT_PTR CALLBACK SettingsProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 typedef struct {
   void*pOldMDD;
   BOOL LoadingMode;
 } SYMSETDLGDATA;
 INT_PTR ShowSymbolSetDialog(HWND hwndOwner, BOOL LoadingSet);
+
 INT_PTR CALLBACK CompressorProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 void           SetScript(const TCHAR *script, bool clearArgs = true);
 void           CompileNSISScript();
@@ -233,6 +234,7 @@ typedef struct NSISScriptData {
   DWORD warnings;
   HINSTANCE hInstance;
   HWND hwnd;
+  HWND logwnd;
   HMENU menu;
   HMENU fileSubmenu;
   HMENU editSubmenu;
@@ -247,8 +249,8 @@ typedef struct NSISScriptData {
   LPCTSTR compressor_name;
   TCHAR compressor_stats[512];
   LPCTSTR best_compressor_name;
-  // Added by Darren Owen (DrO) on 1/10/2003
   int recompile_test;
+  WORD log_zoom;
 } NSCRIPTDATA;
 
 extern NSCRIPTDATA g_sdata;

@@ -3,7 +3,7 @@
  * 
  * This file is a part of NSIS.
  * 
- * Copyright (C) 1999-2021 Nullsoft and Contributors
+ * Copyright (C) 1999-2023 Nullsoft and Contributors
  * 
  * Licensed under the zlib/libpng license (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,8 +29,15 @@
 #  include <stdio.h>
 #  include <unistd.h>
 #endif
-
 #include <stdarg.h>
+#include <stdio.h>
+
+static inline bool ui_add(unsigned int &r, unsigned int a, unsigned int b) { return (r = a + b) >= a; }
+static inline bool si_add(int &r, int a, int b)
+{
+  unsigned int na = a < 0, aa = na ? a * -1 : a, nb = b < 0, ab = nb ? b * -1 : b, t = aa + ab, uz = 0;
+  return na == nb && (t > INT_MAX || (~uz / 2 > INT_MAX && t < aa)) ? false : (r = a + b, true); // Good enough for our use
+}
 
 extern double my_wtof(const wchar_t *str);
 extern size_t my_strncpy(TCHAR*Dest, const TCHAR*Src, size_t cchMax);
@@ -108,6 +115,49 @@ public:
 };
 
 int sane_system(const TCHAR *command);
+
+template<class S> static size_t freadall(void*b, size_t cb, S*s) { return cb == fread(b, 1, cb, s) ? cb : 0; }
+template<class T, class S> static inline size_t freadpod(T&b, S*s) { return freadall(b, sizeof(T), s); }
+
+struct CStdFileStreamOnMemory
+{
+  typedef CStdFileStreamOnMemory S_t;
+  BYTE*m_Base;
+  size_t m_cb, m_pos;
+  template<class T> CStdFileStreamOnMemory(T*p, size_t cb) : m_Base((BYTE*)p), m_cb(cb), m_pos(0) {}
+  template<class V> static inline bool assignfp(fpos_t*p, V v)
+  {
+    if (sizeof(p) >= sizeof(v)) return (*(V*)p = v, true);
+    UINT t = (UINT) v; 
+    return t == v && sizeof(p) >= sizeof(t) && assignfp(p, t);
+  }
+  template<class V> static inline void readfp(V&v, const fpos_t*p) { v = sizeof(p) >= sizeof(v) ? *(V*)p : *(UINT*)p; }
+  friend inline size_t fclose(S_t*s) { return 0; }
+  friend int fgetpos(S_t*s, fpos_t*pos) { return assignfp(pos, s->m_pos) ? 0 : 1; }
+  friend int fsetpos(S_t*s, const fpos_t*pos) { size_t v; readfp(v, pos); return v < s->m_cb ? (s->m_pos = v, 0) : 1; }
+  friend int fseek(S_t*s, long int offset, int origin)
+  {
+    if ((unsigned long) offset != (size_t) offset) return 1; // long int will usually fit in our size_t
+    size_t newpos, invalid = 0;
+    switch(origin)
+    {
+    case SEEK_SET: newpos = (size_t) offset, invalid = offset < 0; break;
+    case SEEK_CUR: newpos = s->m_pos + offset; break;
+    case SEEK_END: newpos = s->m_cb + offset; break;
+    default: ++invalid;
+    }
+    if (!(invalid += s->m_cb <= newpos)) s->m_pos = newpos;
+    return (int) invalid;
+  }
+  friend size_t fread(void*b, size_t e, size_t c, S_t*s)
+  {
+    size_t cb = e * c, endpos = s->m_pos + cb;
+    if (endpos < s->m_pos || cb < c) return 0; // EOF/Overflow
+    if (s->m_cb < endpos) cb = s->m_cb - s->m_pos; // EOF
+    memcpy(b, s->m_Base + s->m_pos, cb);
+    return (s->m_pos += cb, cb);
+  }
+};
 
 #define NSISRT_DEFINEGLOBALS() int g_display_errors=1; FILE *g_output=stdout, *g_errout=stderr
 void PrintColorFmtErrMsg(const TCHAR *fmtstr, va_list args);
@@ -267,6 +317,7 @@ int my_open(const TCHAR *pathname, int flags);
 #define OPEN(a, b) my_open(a, b)
 
 #else // _WIN32
+bool GetFileSize64(HANDLE hFile, ULARGE_INTEGER &uli);
 
 #define my_convert(x) (x)
 #define my_convert_free(x)
@@ -278,9 +329,15 @@ int my_open(const TCHAR *pathname, int flags);
 FILE* my_fopen(const TCHAR *path, const char *mode);
 #define FOPEN(a, b) my_fopen((a), (b))
 
+int ptrtostr(const void* Src, TCHAR*Dst);
+void* strtoptr(const TCHAR*Src);
+template<class T> T strtoptr(const TCHAR*Src, T&Dst) { return Dst = (T) strtoptr(Src); }
+
+UINT64 Platform_GetMaxFileSize();
 const UINT32 invalid_file_size32 = ~ (UINT32) 0;
 UINT32 get_file_size32(FILE *f);
 const UINT64 invalid_file_size64 = ~ (UINT64) 0;
+UINT64 get_file_size64(FILE *f);
 BYTE* alloc_and_read_file(FILE *f, unsigned long &size);
 BYTE* alloc_and_read_file(const TCHAR *filepath, unsigned long &size);
 

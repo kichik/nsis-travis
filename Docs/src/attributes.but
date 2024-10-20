@@ -30,7 +30,7 @@ Controls whether or not installs are allowed in the root directory of a drive, o
 
 \c true|\\<b\\>false\\</b\\>
 
-Sets whether or not the install window automatically closes when completed. This is overrideable from a section using \R{setautoclose}{SetAutoClose}.
+Sets whether or not the install window automatically closes when completed. This is overridable from a section using \R{setautoclose}{SetAutoClose}.
 
 \S2{abgfont} BGFont
 
@@ -230,7 +230,7 @@ Valid values for flag are "smooth" (smooth the progress bar) or "colored" (color
 
 \S2{ainsttype} InstType
 
-\c install_type_name [index_output] | /NOCUSTOM | /CUSTOMSTRING=str | /COMPONENTSONLYONCUSTOM
+\c install_type_name [index_output] | /[UNINST]NOCUSTOM | /CUSTOMSTRING=str | /[UNINST]COMPONENTSONLYONCUSTOM
 
 Adds an install type to the install type list, or disables the custom install type. There can be as many as \#{NSIS_MAX_INST_TYPES}32 types, each one specifying the name of the install type. If the name is prefixed with 'un.' it is an uninstaller install type. The name can contain variables which will be processed at runtime before the components page shows. Another way of changing the \R{ainsttype}{InstType} name during runtime is the \R{sinsttypesettext}{InstTypeSetText} command. The difference is that with \R{sinsttypesettext}{InstTypeSetText} you are saving your precious user variables. The first type is the default (generally 'Typical' or 'Full'). If the /NOCUSTOM switch is specified, then the "custom" install type is disabled, and the user has to choose one of the pre-defined install types. Alternatively, if the /CUSTOMSTRING switch is specified, the parameter will override the "Custom" install type text. Alternatively, if the /COMPONENTSONLYONCUSTOM flag is specified, the component list will only be shown if the "Custom" install type is selected.
 
@@ -306,11 +306,12 @@ See \W{http://msdn.microsoft.com/en-us/library/dd464660}{MSDN} for more informat
 Declare that the installer can handle paths longer than MAX_PATH. Only supported on Windows 10 Anniversary Update and later.
 
 \NsisWarnBlockContainerBegin
-\\<b\\>Note: \\</b\\> Instructions like CopyFiles and CreateShortcut do not support long paths!
+\NsisBlockHeaderNote
+Instructions like CopyFiles and CreateShortcut do not support long paths!
 \NsisWarnBlockContainerEnd
 
 \NsisWarnBlockContainerBegin
-\\<b\\>Note: \\</b\\> Has no effect if the "Enable Win32 long paths" policy is not enabled.
+\NsisBlockHeaderNote Has no effect if the "Enable Win32 long paths" policy is not enabled.
 \NsisWarnBlockContainerEnd
 
 \S2{amanifestsupportedos} ManifestSupportedOS
