@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.x']  # 2.x is supported but EOL on GitHub Actions
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, macos-12, macos-13, macos-14, macos-15, windows-2019, windows-2022]  # TODO fails to find cppunit on macos-14/15
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, macos-12, macos-13, windows-2019, windows-2022]  # TODO fails to find cppunit on macos-14/15
         log: [yes, no]
         include:
           - nightly: nightly
@@ -24,9 +24,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Brew Dependencies
         run: |
-          brew install scons mingw-w64 zlib cppunit
-          #curl --retry 9 -sLo cppunit.rb "https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw"
-          #brew install -s --formula cppunit.rb
+          brew install scons mingw-w64 zlib
+          curl --retry 9 -sLo cppunit.rb "https://sourceforge.net/p/nsis/code/HEAD/tree/web-scripts/trunk/cppunit.rb?format=raw"
+          brew install -s --formula cppunit.rb
         if: startsWith(matrix.os, 'macos')
       - name: Apt Dependencies
         run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y scons g++-mingw-w64-i686 binutils-mingw-w64-i686 zlib1g-dev libcppunit-dev
