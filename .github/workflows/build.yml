@@ -9,17 +9,19 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        python-version: ['3.x']  # 2.x is supported but EOL on GitHub Actions
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, macos-12, macos-13, macos-14, macos-15, windows-2019, windows-2022]  # TODO fails to find VC windows-2022
         log: [yes, no]
         include:
           - nightly: nightly
             os: windows-2019
             log: no
+            python-version: 3.x
     
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Brew Dependencies
         run: |
           brew install scons mingw-w64 zlib
@@ -30,9 +32,9 @@ jobs:
         run: sudo DEBIAN_FRONTEND=noninteractive apt-get install -y scons g++-mingw-w64-i686 binutils-mingw-w64-i686 zlib1g-dev libcppunit-dev
         if: startsWith(matrix.os, 'ubuntu')
       - name: Setup Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.8'
+          python-version: ${{ matrix.python-version }}
         if: startsWith(matrix.os, 'windows')
       - name: Choco Dependencies
         run: |
@@ -41,12 +43,13 @@ jobs:
           Start-Process ./cppunit-msvc-1.12.1.exe $arguments -NoNewWindow -Wait
           pip install scons
           choco install zip
-          choco install html-help-workshop 
+          # microsoft removed the download of htmlhelp.exe -- https://chocolatey.org/packages/html-help-workshop#comment-5245282888
+          #choco install html-help-workshop 
           echo "${Env:ProgramFiles(x86)}\HTML Help Workshop" >> $Env:GITHUB_PATH
         if: startsWith(matrix.os, 'windows')
       - name: Zlib Dependency
         run: |
-          curl -sLo $HOME/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
+          curl --retry 9 -sLo $HOME/zlib.zip "https://downloads.sourceforge.net/project/libpng/zlib/1.2.8/zlib128-dll.zip?r=&ts=1403402496&use_mirror=hivelocity"
           mkdir $HOME/zlib
           unzip $HOME/zlib.zip -d $HOME/zlib
       - name: Build
@@ -55,7 +58,7 @@ jobs:
         if: "!startsWith(matrix.os, 'windows')"
       - name: Build (Windows)
         run: |
-          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/release-win32 DOCTYPES=chm test dist
+          scons ZLIB_W32=$HOME/zlib SKIPUTILS="NSIS Menu" NSIS_CONFIG_LOG=${{ matrix.log }} APPEND_CPPPATH=$HOME/cppunit/include APPEND_LIBPATH=$HOME/cppunit/lib/release-win32 test dist
         if: startsWith(matrix.os, 'windows')
       - name: Config Errors
         if: ${{ failure() }}
@@ -69,7 +72,7 @@ jobs:
           zip $zip build.log
         if: matrix.nightly == 'nightly' && github.ref == 'refs/heads/master'
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: build.zip
           path: nsis-*.zip
@@ -81,12 +84,10 @@ jobs:
     needs: [build]
     steps:
       - name: Download a single artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: build.zip
       - name: Upload to SourceForge
-        # don't override real repo's upload
-        if: ${{ false }}
         run: |
           echo "$DEPLOY_KEY" > $HOME/deploy_key
           set -ex
